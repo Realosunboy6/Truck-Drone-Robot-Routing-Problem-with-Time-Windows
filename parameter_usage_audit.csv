@@ -1,0 +1,49 @@
+parameter,status,read_by_model_regex,note
+C_drone,active_in_model,True,Drone distance-cost coefficient used in drone route/sortie variable cost.
+C_rob,active_in_model,True,Robot distance-cost coefficient used in robot route/sortie variable cost.
+C_veh,active_in_model,True,Truck distance-cost coefficient used in truck travel cost.
+C_w,active_in_model,True,Truck time-cost coefficient used in truck travel cost.
+C_w_drone,active_in_model,True,Drone time-cost coefficient used in drone route/sortie cost.
+C_w_r,active_in_model,True,Robot time-cost coefficient used in robot route/sortie cost.
+DRONES_CARRIED_AT_DEPOT,active_in_model,True,Maximum distinct drones a truck may launch from the depot.
+E_d,active_in_model,True,Drone endurance as maximum route distance per selected sortie; enforced as a hard filter and hard constraint.
+E_r,active_in_model,True,Robot endurance as maximum route distance per selected sortie; enforced as a hard filter and hard constraint.
+MAX_DRONES_PER_TRUCK,active_in_model,True,Maximum distinct drones that can interact with one truck across launch/recovery events.
+MAX_ROBOTS_PER_TRUCK,active_in_model,True,Maximum distinct robots that can interact with one truck across launch/recovery events.
+NUM_ARCS,metadata_not_solve_model,False,Processed-data count for traceability only; the solve model reads arcs.csv directly.
+NUM_CUSTOMERS,metadata_not_solve_model,False,Processed-data count for traceability only; the solve model reads customers.csv directly.
+NUM_DRONES,active_in_model,True,Available drone fleet upper bound; the solve model trims identical unused excess platforms using truck-platform caps.
+NUM_NODES,metadata_not_solve_model,False,Processed-data count for traceability only; the solve model reads nodes.csv directly.
+NUM_ROBOTS,active_in_model,True,Available robot fleet upper bound; the solve model trims identical unused excess platforms using truck-platform caps.
+NUM_TRUCKS,active_in_model,True,Number of candidate trucks available to the MILP.
+Q_d,active_in_model,True,Drone payload capacity; selected sortie payload must not exceed this hard limit.
+Q_r,active_in_model,True,Robot payload capacity; selected sortie payload must not exceed this hard limit.
+Q_t,active_in_model,True,Truck payload capacity; truck-served demand on each truck route must not exceed this hard limit.
+ROBOTS_CARRIED_AT_DEPOT,active_in_model,True,Maximum distinct robots a truck may launch from the depot.
+T_max,active_in_model,True,"Truck route-duration threshold. Exceeding it is allowed only through the route-duration penalty, not as a hard infeasibility."
+assumptions,metadata_not_solve_model,False,Traceability note; does not affect optimization.
+big_M,unused_source_field,False,Raw TDRP-TW Big-M value. The solve model does not use it; it computes a safe internal Big-M from the processed time horizon.
+drone_departure_cost,unused_source_field,False,Raw TDRP-TW drone departure cost. The final model instead uses Malik/Table-3 drone_fixed_cost plus distance/time variable cost.
+drone_fixed_cost,active_in_model,True,Fixed activation cost per selected drone sortie; Malik/Table-3 default is 10.
+drone_speed,builder_only_not_solve_model,False,Used only during preprocessing to build drone_time_matrix.csv; the solve model reads the matrix.
+format,metadata_not_solve_model,False,Traceability note; does not affect optimization.
+lambda_E_d,unused_pdf_penalty,False,PDF/heuristic endurance-violation penalty. Unused because drone endurance is enforced as a hard constraint.
+lambda_E_r,unused_pdf_penalty,False,PDF/heuristic endurance-violation penalty. Unused because robot endurance is enforced as a hard constraint.
+lambda_Q,unused_pdf_penalty,False,PDF/heuristic capacity-violation penalty. Unused because payload capacities are enforced as hard constraints.
+lambda_T,active_in_model,True,Penalty weight for route-duration excess over T_max.
+lambda_W,active_in_model,True,Penalty weight for customer time-window lateness.
+parameter_scenario,metadata_not_solve_model,False,Traceability note naming the parameter scenario; does not affect optimization.
+parameter_source,metadata_not_solve_model,False,Traceability note naming the parameter source; does not affect optimization.
+parameter_source_arxiv,metadata_not_solve_model,False,Traceability note naming the source paper id; does not affect optimization.
+parsed_at,metadata_not_solve_model,False,Preprocessing timestamp; does not affect optimization.
+robot_fixed_cost,active_in_model,True,Fixed activation cost per selected robot sortie; Malik/Table-3 default is 8.
+robot_fleet_assumption,metadata_not_solve_model,False,Traceability note explaining robot fleet assumptions; does not affect optimization.
+robot_speed,builder_only_not_solve_model,False,Used only during preprocessing to build robot_time_matrix.csv; the solve model reads the matrix.
+selected_raw_file,metadata_not_solve_model,False,Package-relative pointer to the raw benchmark file; does not affect optimization.
+source_dataset,metadata_not_solve_model,False,Traceability note; does not affect optimization.
+source_instance,metadata_not_solve_model,False,Raw source filename; does not affect optimization.
+truck_fixed_cost,active_in_model,True,Fixed activation cost per used truck; Malik/Table-3 default is 30.
+truck_speed,builder_only_not_solve_model,False,Used only during preprocessing to build truck_time_matrix.csv; the solve model reads the matrix.
+truck_variable_cost,unused_source_field,False,Raw TDRP-TW truck variable cost. The final model instead uses C_veh and C_w from the literature parameter scenario.
+waiting_penalty_weight,unused_source_field,False,Raw TDRP-TW waiting-cost field. It is not lambda_W; platform waiting is audited/reported but not directly penalized.
+warnings,metadata_not_solve_model,False,Traceability note; does not affect optimization.

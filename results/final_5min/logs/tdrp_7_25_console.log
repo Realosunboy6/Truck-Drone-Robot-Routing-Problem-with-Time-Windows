@@ -1,0 +1,222 @@
+
+Operational model information
+------------------------------------------------------------
+Model: drone_robot_truck_ordered_sorties_first_instance
+ - number of variables: 79984
+   - binary=79859, integer=0, continuous=125
+ - number of constraints: 186122
+   - linear=186122
+ - parameters:
+     parameters.threads = 2
+     parameters.timelimit = 300.00000000000000
+     parameters.workmem = 4096.00000000000000
+     parameters.emphasis.memory = 1
+     parameters.mip.strategy.file = 3
+ - objective: minimize
+ - problem type is: MILP
+Truck-only warm start added: True
+LP exported to: results/final_5min/tdrp_7_25_ordered_sorties_github_final_5min_3_10_no_cmax_arrival_status_model.lp
+Version identifier: 22.1.1.0 | 2022-11-27 | 9160aff4d
+CPXPARAM_Read_DataCheck                          1
+CPXPARAM_Threads                                 2
+CPXPARAM_Emphasis_Memory                         1
+CPXPARAM_MIP_Strategy_File                       3
+CPXPARAM_TimeLimit                               300
+CPXPARAM_WorkMem                                 4096
+1 of 1 MIP starts provided solutions.
+MIP start 'm1' defined initial solution with objective 3188.6778.
+Tried aggregator 1 time.
+MIP Presolve eliminated 20342 rows and 19 columns.
+MIP Presolve modified 11390 coefficients.
+Reduced MIP has 165780 rows, 79965 columns, and 760425 nonzeros.
+Reduced MIP has 79859 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 4.05 sec. (3801.72 ticks)
+Probing time = 0.31 sec. (103.24 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+Reduced MIP has 165780 rows, 79965 columns, and 760425 nonzeros.
+Reduced MIP has 79859 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 3.70 sec. (2610.80 ticks)
+Probing time = 0.25 sec. (102.03 ticks)
+Clique table members: 415415.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 2 threads.
+Root relaxation solution time = 0.64 sec. (373.29 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                         3188.6778        0.0000           100.00%
+      0     0       49.8400    27     3188.6778       49.8400      227   98.44%
+      0     0       49.8400    33     3188.6778      Cuts: 44      335   98.44%
+      0     0       49.8400    25     3188.6778   Impl Bds: 6      339   98.44%
+
+Cover cuts applied:  2
+Implied bound cuts applied:  31
+Flow cuts applied:  1
+Gomory fractional cuts applied:  2
+
+Root node processing (before b&c):
+  Real time             =  300.25 sec. (65500.25 ticks)
+Parallel b&c, 2 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =  300.25 sec. (65500.25 ticks)
+
+Operational solve summary
+------------------------------------------------------------
+Solve status: time limit exceeded
+Objective value: 3188.6777778007295
+Runtime seconds: 318.0430
+
+KPI values
+Solve Status: time limit exceeded
+Objective Value: 3188.6777778007295
+Runtime Seconds: 318.0429540000041
+Truck Only Mode: 0
+Truck Warm Start: 1
+Drones In Model: 7
+Robots In Model: 7
+Reported Makespan: 13.09777777780073
+Objective: 3188.6777778007295
+Operating Cost: 90.89999999999998
+Route Duration Penalty: 3097.7777778007294
+Route Duration Excess: 3.0977777778007294
+Time Window Penalty: 0.0
+Total Penalty: 3097.7777778007294
+Used Trucks: 1.0
+truck_variable_cost: 60.899999999999984
+drone_variable_cost: 0.0
+robot_variable_cost: 0.0
+truck_fixed_cost: 30.0
+drone_fixed_cost: 0.0
+robot_fixed_cost: 0.0
+total_variable_cost: 60.899999999999984
+total_fixed_cost: 30.0
+operating_cost: 90.89999999999998
+route_duration_penalty: 3097.7777778007294
+time_window_penalty: 0.0
+total_penalty: 3097.7777778007294
+objective_value: 3188.6777778007295
+
+Selected truck route arcs
+ truck  i  j  value
+     1  0  1    1.0
+     1  1  5    1.0
+     1  2  3    1.0
+     1  3  8    1.0
+     1  4  7    1.0
+     1  5  4    1.0
+     1  6  2    1.0
+     1  7  6    1.0
+
+Reconstructed truck routes
+ truck                                     route  arc_count  starts_at_depot  ends_at_end_depot status
+     1 0 -> 1 -> 5 -> 4 -> 7 -> 6 -> 2 -> 3 -> 8          8             True               True   used
+     2                                    unused          0            False              False unused
+     3                                    unused          0            False              False unused
+     4                                    unused          0            False              False unused
+     5                                    unused          0            False              False unused
+
+Selected drone sorties
+(none)
+
+Selected robot sorties
+(none)
+
+Sortie timing audit
+platform vehicle sortie_id truck launch_truck recovery_truck route leg  travel_duration_hr  arrival_before_wait_hr  wait_hr  service_start_hr  service_duration_hr  service_finish_hr
+  (none)                                                                               0.0                     0.0      0.0               0.0                  0.0                0.0
+
+Customer assignment
+ customer_id assigned_mode assignment_detail
+           1         truck  truck 1: visit 1
+           2         truck  truck 1: visit 2
+           3         truck  truck 1: visit 3
+           4         truck  truck 1: visit 4
+           5         truck  truck 1: visit 5
+           6         truck  truck 1: visit 6
+           7         truck  truck 1: visit 7
+
+Arrival times
+ mode vehicle  node_id                     status arrival_time
+truck       1        0                    visited          0.0
+truck       1        1                    visited         0.25
+truck       1        2                    visited        11.13
+truck       1        3                    visited        12.67
+truck       1        4                    visited     0.794444
+truck       1        5                    visited     0.522222
+truck       1        6                    visited         9.58
+truck       1        7                    visited         8.03
+truck       1        8                    visited    13.097778
+truck       2        0               unused_truck             
+truck       2        1               unused_truck             
+truck       2        2               unused_truck             
+truck       2        3               unused_truck             
+truck       2        4               unused_truck             
+truck       2        5               unused_truck             
+truck       2        6               unused_truck             
+truck       2        7               unused_truck             
+truck       2        8               unused_truck             
+truck       3        0               unused_truck             
+truck       3        1               unused_truck             
+truck       3        2               unused_truck             
+truck       3        3               unused_truck             
+truck       3        4               unused_truck             
+truck       3        5               unused_truck             
+truck       3        6               unused_truck             
+truck       3        7               unused_truck             
+truck       3        8               unused_truck             
+truck       4        0               unused_truck             
+truck       4        1               unused_truck             
+truck       4        2               unused_truck             
+truck       4        3               unused_truck             
+truck       4        4               unused_truck             
+truck       4        5               unused_truck             
+truck       4        6               unused_truck             
+truck       4        7               unused_truck             
+truck       4        8               unused_truck             
+truck       5        0               unused_truck             
+truck       5        1               unused_truck             
+truck       5        2               unused_truck             
+truck       5        3               unused_truck             
+truck       5        4               unused_truck             
+truck       5        5               unused_truck             
+truck       5        6               unused_truck             
+truck       5        7               unused_truck             
+truck       5        8               unused_truck             
+drone                0                      depot          0.0
+robot                0                      depot          0.0
+drone                1 not_served_value_arbitrary          0.0
+robot                1 not_served_value_arbitrary          0.0
+drone                2 not_served_value_arbitrary          0.0
+robot                2 not_served_value_arbitrary          0.0
+drone                3 not_served_value_arbitrary          0.0
+robot                3 not_served_value_arbitrary          0.0
+drone                4 not_served_value_arbitrary          0.0
+robot                4 not_served_value_arbitrary          0.0
+drone                5 not_served_value_arbitrary          0.0
+robot                5 not_served_value_arbitrary          0.0
+drone                6 not_served_value_arbitrary          0.0
+robot                6 not_served_value_arbitrary          0.0
+drone                7 not_served_value_arbitrary          0.0
+robot                7 not_served_value_arbitrary          0.0
+drone                8                      depot          0.0
+robot                8                      depot          0.0
+
+Positive penalty variables
+route_late_t[1]: 3.097778
+route_late_global[global]: 3.097778
+
+Warnings / modeling notes
+- Operational constraints are route-completeness constraints, not explicit PDF constraints.
+- Flexible docking uses h_launch/h_recover and g_launch/g_recover.
+- Big-M used: 10000.0
+
+Excel exported to: results/final_5min/tdrp_7_25_ordered_sorties_github_final_5min_3_10_no_cmax_arrival_status_solution.xlsx
+LP file: results/final_5min/tdrp_7_25_ordered_sorties_github_final_5min_3_10_no_cmax_arrival_status_model.lp
+Operational notes: results/final_5min/tdrp_7_25_ordered_sorties_github_final_5min_3_10_no_cmax_arrival_status_model_notes.md
+

@@ -1,0 +1,253 @@
+
+Operational model information
+------------------------------------------------------------
+Model: drone_robot_truck_ordered_sorties_first_instance
+ - number of variables: 17381
+   - binary=17316, integer=0, continuous=65
+ - number of constraints: 48320
+   - linear=48320
+ - parameters:
+     parameters.threads = 2
+     parameters.timelimit = 1800.00000000000000
+     parameters.workmem = 4096.00000000000000
+     parameters.emphasis.memory = 1
+     parameters.mip.strategy.file = 3
+ - objective: minimize
+ - problem type is: MILP
+Truck-only warm start added: True
+LP exported to: results/final_30min\tdrp_6_75_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model.lp
+Version identifier: 22.1.1.0 | 2022-11-27 | 9160aff4d
+CPXPARAM_Read_DataCheck                          1
+CPXPARAM_Threads                                 2
+CPXPARAM_Emphasis_Memory                         1
+CPXPARAM_MIP_Strategy_File                       3
+CPXPARAM_TimeLimit                               1800
+CPXPARAM_WorkMem                                 4096
+1 of 1 MIP starts provided solutions.
+MIP start 'm1' defined initial solution with objective 90.9000.
+Tried aggregator 1 time.
+MIP Presolve eliminated 8090 rows and 6 columns.
+MIP Presolve modified 2306 coefficients.
+Reduced MIP has 40230 rows, 17375 columns, and 186734 nonzeros.
+Reduced MIP has 17316 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.45 sec. (578.23 ticks)
+Elapsed time = 7.95 sec. (10001.05 ticks) for 32% of probing (12284 vars fixed)
+Probing fixed 12751 vars, tightened 2 bounds.
+Probing time = 10.33 sec. (13298.23 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 29260 rows and 12751 columns.
+MIP Presolve modified 49 coefficients.
+Reduced MIP has 10970 rows, 4624 columns, and 49300 nonzeros.
+Reduced MIP has 4565 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.08 sec. (94.23 ticks)
+Probing time = 0.02 sec. (14.97 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+Reduced MIP has 10970 rows, 4624 columns, and 49300 nonzeros.
+Reduced MIP has 4565 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.05 sec. (61.43 ticks)
+Probing time = 0.02 sec. (14.93 ticks)
+Clique table members: 62325.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 2 threads.
+Root relaxation solution time = 0.33 sec. (595.14 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                           90.9000        0.0000           100.00%
+      0     0       30.6176    46       90.9000       30.6176     2704   66.32%
+*     0+    0                           88.0000       30.6176            65.21%
+*     0+    0                           83.9800       30.6176            63.54%
+      0     0       46.1136    51       83.9800      Cuts: 16     3712   45.09%
+      0     0       46.2987    32       83.9800      Cuts: 22     4163   44.87%
+
+Repeating presolve.
+Tried aggregator 3 times.
+MIP Presolve eliminated 5876 rows and 2383 columns.
+MIP Presolve modified 3733 coefficients.
+Aggregator did 6 substitutions.
+Reduced MIP has 5088 rows, 2235 columns, and 22732 nonzeros.
+Reduced MIP has 2178 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.05 sec. (52.20 ticks)
+Probing fixed 1085 vars, tightened 0 bounds.
+Probing time = 0.56 sec. (663.84 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 2495 rows and 1085 columns.
+MIP Presolve added 2 rows and 0 columns.
+MIP Presolve modified 1454 coefficients.
+Reduced MIP has 2595 rows, 1150 columns, and 11416 nonzeros.
+Reduced MIP has 1093 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.02 sec. (11.19 ticks)
+Probing fixed 20 vars, tightened 0 bounds.
+Probing time = 0.12 sec. (162.50 ticks)
+Tried aggregator 1 time.
+MIP Presolve eliminated 79 rows and 40 columns.
+MIP Presolve modified 1 coefficients.
+Reduced MIP has 2516 rows, 1110 columns, and 11179 nonzeros.
+Reduced MIP has 1053 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.01 sec. (10.21 ticks)
+Probing time = 0.00 sec. (7.05 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+Reduced MIP has 2516 rows, 1110 columns, and 11179 nonzeros.
+Reduced MIP has 1053 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.00 sec. (8.49 ticks)
+Represolve time = 0.86 sec. (953.76 ticks)
+Probing time = 0.02 sec. (7.05 ticks)
+Clique table members: 57992.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 2 threads.
+Root relaxation solution time = 0.02 sec. (6.74 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                           83.9800       46.2987            44.87%
+      0     0       47.2867    21       83.9800       47.2867     4323   43.69%
+      0     0       48.9417    50       83.9800      Cuts: 31     4663   41.72%
+      0     0       49.6660    39       83.9800      Cuts: 20     5034   40.86%
+      0     0       49.8100    18       83.9800      Cuts: 20     5084   39.50%
+      0     0       49.8300    15       83.9800      Cuts: 10     5101   39.50%
+      0     0       49.8300    28       83.9800       Cuts: 6     5111   39.50%
+Detecting symmetries...
+      0     0        cutoff             83.9800       83.9800     5111    0.00%
+Elapsed time = 16.70 sec. (19968.93 ticks, tree = 0.01 MB, solutions = 3)
+
+Clique cuts applied:  2
+Cover cuts applied:  1
+Implied bound cuts applied:  22
+Flow cuts applied:  3
+Mixed integer rounding cuts applied:  1
+Zero-half cuts applied:  10
+Gomory fractional cuts applied:  1
+
+Root node processing (before b&c):
+  Real time             =   16.70 sec. (19969.70 ticks)
+Parallel b&c, 2 threads:
+  Real time             =    0.00 sec. (0.00 ticks)
+  Sync time (average)   =    0.00 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) =   16.70 sec. (19969.70 ticks)
+
+Operational solve summary
+------------------------------------------------------------
+Solve status: integer optimal solution
+Objective value: 83.98
+Runtime seconds: 20.8754
+
+KPI values
+Solve Status: integer optimal solution
+Objective Value: 83.98
+Runtime Seconds: 20.875449699989986
+Truck Only Mode: 0
+Truck Warm Start: 1
+Drones In Model: 4
+Robots In Model: 4
+Reported Makespan: 9.999999999994543
+Objective: 83.98
+Operating Cost: 83.98
+Route Duration Penalty: 0.0
+Route Duration Excess: 0.0
+Time Window Penalty: 0.0
+Total Penalty: 0.0
+Used Trucks: 1.0
+truck_variable_cost: 43.5
+drone_variable_cost: 0.48
+robot_variable_cost: 0.0
+truck_fixed_cost: 30.0
+drone_fixed_cost: 10.0
+robot_fixed_cost: 0.0
+total_variable_cost: 43.98
+total_fixed_cost: 40.0
+operating_cost: 83.98
+route_duration_penalty: 0.0
+time_window_penalty: 0.0
+total_penalty: 0.0
+objective_value: 83.98
+
+Selected truck route arcs
+ truck  i  j  value
+     1  0  2    1.0
+     1  2  3    1.0
+     1  3  6    1.0
+     1  6  7    1.0
+
+Reconstructed truck routes
+ truck                 route  arc_count  starts_at_depot  ends_at_end_depot status
+     1 0 -> 2 -> 3 -> 6 -> 7          4             True               True   used
+     2                unused          0            False              False unused
+
+Selected drone sorties
+ launch_truck  recovery_truck  drone  sortie_id  value_launch  value_recovery truck  i  k  sequence sequence_text                 route  customer_count  payload  travel_distance  travel_duration_precomputed_hr  cost  truck_launch_time_hr  truck_recovery_time_hr  platform_finish_time_hr  recovery_slack_hr  travel_duration_hr  service_duration_hr  active_duration_hr  elapsed_schedule_time_hr  waiting_time_hr
+            1               1      1        179           1.0             1.0  1->1  2  6 (5, 4, 1)         5,4,1 2 -> 5 -> 4 -> 1 -> 6               3    20.48              6.0                            0.08  0.48              0.133333                    4.59                     4.59       8.002488e-13                0.08                 0.41                0.49                  4.456667         3.966667
+
+Selected robot sorties
+(none)
+
+Sortie timing audit
+platform  vehicle  sortie_id truck  launch_truck  recovery_truck                 route    leg  from_node  to_node  travel_distance  travel_duration_hr  arrival_before_wait_hr  wait_hr  service_start_hr  service_duration_hr  service_finish_hr
+   drone        1        179  1->1             1               1 2 -> 5 -> 4 -> 1 -> 6 2 -> 5          2        5              1.0            0.013333                0.146667 0.000000          0.146667                 0.08           0.226667
+   drone        1        179  1->1             1               1 2 -> 5 -> 4 -> 1 -> 6 5 -> 4          5        4              2.0            0.026667                0.253333 3.966667          4.220000                 0.08           4.300000
+   drone        1        179  1->1             1               1 2 -> 5 -> 4 -> 1 -> 6 4 -> 1          4        1              1.0            0.013333                4.313333 0.000000          4.313333                 0.25           4.563333
+   drone        1        179  1->1             1               1 2 -> 5 -> 4 -> 1 -> 6 1 -> 6          1        6              2.0            0.026667                4.590000 0.000000          4.590000                 0.00           4.590000
+
+Customer assignment
+ customer_id assigned_mode                           assignment_detail
+           1         drone drone 1: 2 -> 5 -> 4 -> 1 -> 6 (truck 1->1)
+           2         truck                            truck 1: visit 2
+           3         truck                            truck 1: visit 3
+           4         drone drone 1: 2 -> 5 -> 4 -> 1 -> 6 (truck 1->1)
+           5         drone drone 1: 2 -> 5 -> 4 -> 1 -> 6 (truck 1->1)
+           6         truck                            truck 1: visit 6
+
+Arrival times
+ mode vehicle  node_id                     status arrival_time
+truck       1        0                    visited          0.0
+truck       1        1                not_visited             
+truck       1        2                    visited     0.133333
+truck       1        3                    visited         3.19
+truck       1        4                not_visited             
+truck       1        5                not_visited             
+truck       1        6                    visited         4.59
+truck       1        7                    visited         10.0
+truck       2        0               unused_truck             
+truck       2        1               unused_truck             
+truck       2        2               unused_truck             
+truck       2        3               unused_truck             
+truck       2        4               unused_truck             
+truck       2        5               unused_truck             
+truck       2        6               unused_truck             
+truck       2        7               unused_truck             
+drone                0                      depot          0.0
+robot                0                      depot          0.0
+drone                1                     served     4.313333
+robot                1 not_served_value_arbitrary          0.0
+drone                2 not_served_value_arbitrary          0.0
+robot                2 not_served_value_arbitrary         -0.0
+drone                3 not_served_value_arbitrary          0.0
+robot                3 not_served_value_arbitrary          0.0
+drone                4                     served         4.22
+robot                4 not_served_value_arbitrary         6.22
+drone                5                     served     0.146667
+robot                5 not_served_value_arbitrary          0.0
+drone                6 not_served_value_arbitrary          0.0
+robot                6 not_served_value_arbitrary          0.0
+drone                7                      depot          0.0
+robot                7                      depot          0.0
+
+Positive penalty variables
+(none)
+
+Warnings / modeling notes
+- Operational constraints are route-completeness constraints, not explicit PDF constraints.
+- Flexible docking uses h_launch/h_recover and g_launch/g_recover.
+- Big-M used: 10000.0
+
+Excel exported to: results/final_30min\tdrp_6_75_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_solution.xlsx
+LP file: results/final_30min\tdrp_6_75_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model.lp
+Operational notes: results/final_30min\tdrp_6_75_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model_notes.md
+

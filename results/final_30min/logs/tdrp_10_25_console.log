@@ -1,0 +1,417 @@
+
+Operational model information
+------------------------------------------------------------
+Model: drone_robot_truck_ordered_sorties_first_instance
+ - number of variables: 32710
+   - binary=32494, integer=0, continuous=216
+ - number of constraints: 70702
+   - linear=70702
+ - parameters:
+     parameters.threads = 2
+     parameters.timelimit = 1800.00000000000000
+     parameters.workmem = 4096.00000000000000
+     parameters.emphasis.memory = 1
+     parameters.mip.strategy.file = 3
+ - objective: minimize
+ - problem type is: MILP
+Truck-only warm start added: True
+LP exported to: results/final_30min\tdrp_10_25_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model.lp
+Version identifier: 22.1.1.0 | 2022-11-27 | 9160aff4d
+CPXPARAM_Read_DataCheck                          1
+CPXPARAM_Threads                                 2
+CPXPARAM_Emphasis_Memory                         1
+CPXPARAM_MIP_Strategy_File                       3
+CPXPARAM_TimeLimit                               1800
+CPXPARAM_WorkMem                                 4096
+1 of 1 MIP starts provided solutions.
+MIP start 'm1' defined initial solution with objective 479.5000.
+Tried aggregator 1 time.
+MIP Presolve eliminated 8194 rows and 29 columns.
+MIP Presolve modified 6811 coefficients.
+Reduced MIP has 62508 rows, 32681 columns, and 280964 nonzeros.
+Reduced MIP has 32494 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.64 sec. (533.24 ticks)
+Probing fixed 0 vars, tightened 7 bounds.
+Probing time = 0.22 sec. (128.92 ticks)
+Tried aggregator 1 time.
+Detecting symmetries...
+Reduced MIP has 62508 rows, 32681 columns, and 280964 nonzeros.
+Reduced MIP has 32494 binaries, 0 generals, 0 SOSs, and 0 indicators.
+Presolve time = 0.70 sec. (525.51 ticks)
+Probing time = 0.08 sec. (40.10 ticks)
+Clique table members: 156145.
+MIP emphasis: balance optimality and feasibility.
+MIP search method: dynamic search.
+Parallel mode: deterministic, using up to 2 threads.
+Root relaxation solution time = 3.67 sec. (3133.38 ticks)
+
+        Nodes                                         Cuts/
+   Node  Left     Objective  IInf  Best Integer    Best Bound    ItCnt     Gap
+
+*     0+    0                          479.5000        0.0000           100.00%
+      0     0      137.3600   152      479.5000      137.3600     3447   71.35%
+*     0+    0                          395.6644      137.3600            65.28%
+*     0+    0                          329.6200      137.3600            58.33%
+*     0+    0                          315.2600      137.3600            56.43%
+*     0+    0                          306.5600      137.3600            55.19%
+      0     2      175.0600    72      306.5600      137.3600     7739   55.19%
+Elapsed time = 34.58 sec. (16321.21 ticks, tree = 0.02 MB, solutions = 5)
+      1     3      176.8286    85      306.5600      175.0600    10285   42.90%
+      2     4      184.3280    34      306.5600      175.0600    10591   42.90%
+*     3+    1                          302.6000      175.0600            42.15%
+*     3+    1                          289.2400      175.0600            39.48%
+*     3+    1                          267.9400      175.0600            34.66%
+*     3+    1                          264.7200      175.0600            33.87%
+      3     3      176.2080    75      264.7200      175.0600     8169   33.87%
+      6     5      181.2650    30      264.7200      179.4028    12448   32.23%
+      7     7      191.4340    26      264.7200      179.4028    17438   32.23%
+      8     7      194.9080    20      264.7200      179.4028    18732   32.23%
+      9     8      217.5040    26      264.7200      179.4028    20556   32.23%
+     10     9      245.4040    26      264.7200      179.4028    21431   32.23%
+     12    10      248.3600    21      264.7200      179.4028    22031   32.23%
+     14    10      187.0530    58      264.7200      179.4028    25198   32.23%
+Elapsed time = 85.38 sec. (32122.32 ticks, tree = 0.11 MB, solutions = 9)
+     17    12      212.8720    45      264.7200      179.4028    26713   32.23%
+     19    13      233.7780    53      264.7200      179.4028    29162   32.23%
+     20     7      233.1404    41      264.7200      179.4028    29088   32.23%
+     21    14      253.9220    67      264.7200      179.4028    34494   32.23%
+     22    15      233.1404    54      264.7200      179.4028    46684   32.23%
+     24    16        cutoff            264.7200      179.4028    53096   32.23%
+     25    17      258.7200    19      264.7200      179.4028    55232   32.23%
+     28    16      256.4000    21      264.7200      179.4028    52218   32.23%
+     31    16      188.2290    39      264.7200      185.4760    58011   29.94%
+     34    22      256.4000    38      264.7200      185.4760    53838   29.94%
+Elapsed time = 165.09 sec. (55158.15 ticks, tree = 1.25 MB, solutions = 9)
+     36    24      256.4435    49      264.7200      185.4760    55880   29.94%
+     51    38      257.4769    90      264.7200      185.4760    58790   29.94%
+*    52+   37                          258.7600      185.4760            28.32%
+     59    18      192.1030    38      258.7600      188.2290    67606   27.26%
+     72    50      244.4361    43      258.7600      188.2290    69371   27.26%
+     77    52      248.8200    24      258.7600      188.2290    71400   27.26%
+     88    57        cutoff            258.7600      188.2290    81549   27.26%
+    100    63      253.7120    55      258.7600      188.2290    84555   27.26%
+    115    68      252.6230    10      258.7600      188.2290    86891   27.26%
+    118    69      205.0265    48      258.7600      188.2290    91190   27.26%
+    128    79      207.1000    16      258.7600      188.2290    96706   27.26%
+Elapsed time = 226.34 sec. (71850.10 ticks, tree = 1.89 MB, solutions = 10)
+    129    42      197.7560    35      258.7600      188.2290    87571   27.26%
+    130    80      207.1001    30      258.7600      188.2290   100159   27.26%
+    131    84      207.1001    30      258.7600      188.2290   114776   27.26%
+    134    86      207.1001    24      258.7600      188.2290   115622   27.26%
+    135    72      200.4300    16      258.7600      188.2290   109699   27.26%
+    137    88      207.1001    27      258.7600      188.2290   118118   27.26%
+    139    73      201.2860    29      258.7600      188.2290   111754   27.26%
+    140    83        cutoff            258.7600      188.2290   122393   27.26%
+    141    84      201.3000    26      258.7600      188.2290   123349   27.26%
+    143    86      218.5600    22      258.7600      188.2290   124745   27.26%
+Elapsed time = 317.89 sec. (96059.35 ticks, tree = 2.83 MB, solutions = 10)
+    144    87      219.7200    14      258.7600      188.2290   125738   27.26%
+    145    88      226.6800    17      258.7600      188.2290   127008   27.26%
+    150    87        cutoff            258.7600      188.2290   127871   27.26%
+    151    88      229.2810    25      258.7600      188.2290   128996   27.26%
+    155    88      230.1600    15      258.7600      188.2290   130523   27.26%
+    158    89      249.3005    19      258.7600      188.2290   132421   27.26%
+    160    89      250.1585    29      258.7600      188.2290   133626   27.26%
+    168    90      245.5300    25      258.7600      201.7080   135260   22.05%
+    171    92      247.5600    16      258.7600      201.7080   136903   22.05%
+    174    95      247.5600    15      258.7600      201.7080   139050   22.05%
+Elapsed time = 357.94 sec. (110250.23 ticks, tree = 3.03 MB, solutions = 10)
+    179   100      247.5601    12      258.7600      201.7080   144635   22.05%
+    180    99        cutoff            258.7600      201.7080   147368   22.05%
+    181   100      247.5601     3      258.7600      201.7080   154344   22.05%
+    182    90      207.1001    15      258.7600      201.7080   163295   22.05%
+    183    99        cutoff            258.7600      201.7080   174332   22.05%
+    184   107      253.3333    49      258.7600      201.7080   225665   22.05%
+    185   108      253.3333    61      258.7600      201.7080   225975   22.05%
+    186   109      254.0450    52      258.7600      201.7080   226458   22.05%
+    188   109        cutoff            258.7600      201.7080   227311   22.05%
+    189   110      256.2200    24      258.7600      201.7080   228928   22.05%
+Elapsed time = 526.30 sec. (169365.43 ticks, tree = 2.83 MB, solutions = 10)
+*   190   109      integral     0      256.2200      201.7080   229031   21.28%
+    191    84        cutoff            256.2200      202.7130   230673   20.88%
+    192    84      254.2354    24      256.2200      202.7130   231509   20.88%
+    193    84      254.2844    19      256.2200      202.7130   233073   20.88%
+    196    84      241.8669    23      256.2200      202.7130   234174   20.88%
+    199    87      209.3800    38      256.2200      202.7130   235291   20.88%
+    203    87      214.9600    43      256.2200      202.7130   239508   20.88%
+    204    88      219.3000    60      256.2200      202.7130   243601   20.88%
+    205    89      225.9983    65      256.2200      202.7130   245729   20.88%
+    206    90      226.0984    94      256.2200      202.7130   247963   20.88%
+    207    91      227.0168    67      256.2200      202.7130   252862   20.88%
+Elapsed time = 711.91 sec. (217257.67 ticks, tree = 2.38 MB, solutions = 11)
+    208    92      227.0764    77      256.2200      202.7130   254387   20.88%
+    209    93      229.9500    52      256.2200      202.7130   258024   20.88%
+    210    94      230.5513    90      256.2200      202.7130   259758   20.88%
+    211    95      230.9100    80      256.2200      202.7130   263913   20.88%
+    212    96      233.3769    90      256.2200      202.7130   267053   20.88%
+    214    98      234.5238    65      256.2200      202.7130   268347   20.88%
+    215    99      238.3200    88      256.2200      202.7130   270518   20.88%
+    222   102        cutoff            256.2200      202.7130   271638   20.88%
+    230   110      208.2349    36      256.2200      202.7130   274091   20.88%
+    239   119      209.5428    38      256.2200      202.7130   275462   20.88%
+Elapsed time = 847.31 sec. (251468.76 ticks, tree = 2.98 MB, solutions = 11)
+    240   120      209.5428    41      256.2200      202.7130   277081   20.88%
+    242   122      209.5428    54      256.2200      202.7130   279313   20.88%
+    243   123      209.5428    65      256.2200      202.7130   281062   20.88%
+    245   125      209.5428    53      256.2200      202.7130   282888   20.88%
+    251   131      209.5483    65      256.2200      202.7130   285583   20.88%
+    256   136      209.5592    73      256.2200      202.7130   287808   20.88%
+    262   142      209.8847    45      256.2200      202.7130   289557   20.88%
+    263   143      209.9007    49      256.2200      202.7130   291238   20.88%
+    265   145      209.9127    50      256.2200      202.7130   292805   20.88%
+    274   154      214.1909    74      256.2200      202.7130   295582   20.88%
+Elapsed time = 880.16 sec. (265120.45 ticks, tree = 3.68 MB, solutions = 11)
+    275   155      214.6409    77      256.2200      202.7130   295993   20.88%
+    287   167      214.7069    83      256.2200      202.7130   297632   20.88%
+*   290+  168                          230.2400      202.7130            11.96%
+    301   128      215.4495   107      230.2400      202.7130   300025   11.96%
+    310   137      216.7801   103      230.2400      202.7130   306874   11.96%
+    312   139      217.4700    78      230.2400      202.7130   309601   11.96%
+    323   150      217.7914    66      230.2400      202.7130   312841   11.96%
+    339   166      217.8114    92      230.2400      202.7130   314604   11.96%
+    342   169      217.8143    86      230.2400      202.7130   314858   11.96%
+    344   171      218.4768   107      230.2400      202.7130   317026   11.96%
+    388   215      219.1880   129      230.2400      202.7130   326887   11.96%
+Elapsed time = 972.72 sec. (289385.14 ticks, tree = 4.07 MB, solutions = 12)
+    428   236      207.1938    36      230.2400      202.7130   337216   11.96%
+    436   237      210.6742   110      230.2400      202.7130   347093   11.96%
+    438   237    infeasible            230.2400      202.7130   352426   11.96%
+    440   237        cutoff            230.2400      202.7130   356561   11.96%
+    441   238      211.8722    59      230.2400      202.7130   360486   11.96%
+    464   255      207.1001    15      230.2400      202.7130   368438   11.96%
+    467   258      207.1002     9      230.2400      202.7130   374740   11.96%
+    469   260      214.3200    58      230.2400      202.7130   382817   11.96%
+*   482   247      integral     0      209.4400      202.7130   389288    3.21%
+*   522+   68                          207.2400      202.7130             2.18%
+    537    60        cutoff            207.2400      202.7130   394352    2.18%
+Elapsed time = 1218.09 sec. (351772.57 ticks, tree = 0.99 MB, solutions = 14)
+*   551    38      integral     0      207.1600      202.7130   396222    2.15%
+    553   107      207.1001    20      207.1600      202.7130   388309    2.15%
+    557     8        cutoff            207.1600      202.7130   595488    2.15%
+    563    13      205.5040    40      207.1600      202.7130   589391    2.15%
+    566     6      206.3970    55      207.1600      205.5040   602787    0.80%
+
+Flow cuts applied:  1
+Lift and project cuts applied:  1
+Gomory fractional cuts applied:  3
+
+Root node processing (before b&c):
+  Real time             =   33.34 sec. (15645.27 ticks)
+Parallel b&c, 2 threads:
+  Real time             = 1578.41 sec. (550653.48 ticks)
+  Sync time (average)   =  165.33 sec.
+  Wait time (average)   =    0.00 sec.
+                          ------------
+Total (root+branch&cut) = 1611.75 sec. (566298.75 ticks)
+
+Operational solve summary
+------------------------------------------------------------
+Solve status: integer optimal solution
+Objective value: 207.16000000000003
+Runtime seconds: 1618.0502
+
+KPI values
+Solve Status: integer optimal solution
+Objective Value: 207.16000000000003
+Runtime Seconds: 1618.0501529999892
+Truck Only Mode: 0
+Truck Warm Start: 1
+Drones In Model: 10
+Robots In Model: 10
+Reported Makespan: 10.0
+Objective: 207.16000000000003
+Operating Cost: 207.16000000000003
+Route Duration Penalty: 0.0
+Route Duration Excess: 0.0
+Time Window Penalty: 0.0
+Total Penalty: 0.0
+Used Trucks: 1.0
+truck_variable_cost: 147.9
+drone_variable_cost: 1.52
+robot_variable_cost: 1.74
+truck_fixed_cost: 30.0
+drone_fixed_cost: 10.0
+robot_fixed_cost: 16.0
+total_variable_cost: 151.16000000000003
+total_fixed_cost: 56.0
+operating_cost: 207.16000000000003
+route_duration_penalty: 0.0
+time_window_penalty: 0.0
+total_penalty: 0.0
+objective_value: 207.16000000000003
+
+Selected truck route arcs
+ truck  i  j  value
+     5  0  1    1.0
+     5  1  7    1.0
+     5  2 11    1.0
+     5  3  5    1.0
+     5  5 10    1.0
+     5  7  3    1.0
+     5 10  2    1.0
+
+Reconstructed truck routes
+ truck                                  route  arc_count  starts_at_depot  ends_at_end_depot status
+     1                                 unused          0            False              False unused
+     2                                 unused          0            False              False unused
+     3                                 unused          0            False              False unused
+     4                                 unused          0            False              False unused
+     5 0 -> 1 -> 7 -> 3 -> 5 -> 10 -> 2 -> 11          7             True               True   used
+     6                                 unused          0            False              False unused
+     7                                 unused          0            False              False unused
+
+Selected drone sorties
+ launch_truck  recovery_truck  drone  sortie_id  value_launch  value_recovery truck  i  k sequence sequence_text             route  customer_count  payload  travel_distance  travel_duration_precomputed_hr  cost  truck_launch_time_hr  truck_recovery_time_hr  platform_finish_time_hr  recovery_slack_hr  travel_duration_hr  service_duration_hr  active_duration_hr  elapsed_schedule_time_hr  waiting_time_hr
+            5               5      1         46           1.0             1.0  5->5  1 11   (9, 6)           9,6 1 -> 9 -> 6 -> 11               2     5.21             19.0                        0.253333  1.52                   1.0                    10.0                 4.253333           5.746667            0.253333                 0.33            0.583333                       9.0             2.67
+
+Selected robot sorties
+ launch_truck  recovery_truck  robot  sortie_id  value_launch  value_recovery truck  i  k sequence sequence_text        route  customer_count  payload  travel_distance  travel_duration_precomputed_hr  cost  truck_launch_time_hr  truck_recovery_time_hr  platform_finish_time_hr  recovery_slack_hr  travel_duration_hr  service_duration_hr  active_duration_hr  elapsed_schedule_time_hr  waiting_time_hr
+            5               5      1         22           1.0             1.0  5->5  2 11     (8,)             8 2 -> 8 -> 11               1     1.01             15.0                            0.60  0.90              7.113333                    10.0                 7.793333           2.206667                0.60                 0.08                0.68                  2.886667             0.00
+            5               5      2          8           1.0             1.0  5->5  0 10     (4,)             4 0 -> 4 -> 10               1     3.40             14.0                            0.56  0.84              0.000000                     6.9                 4.150000           2.750000                0.56                 0.25                0.81                  6.900000             3.34
+
+Sortie timing audit
+platform  vehicle  sortie_id truck  launch_truck  recovery_truck             route     leg  from_node  to_node  travel_distance  travel_duration_hr  arrival_before_wait_hr  wait_hr  service_start_hr  service_duration_hr  service_finish_hr
+   drone        1         46  5->5             5               5 1 -> 9 -> 6 -> 11  1 -> 9          1        9              6.0            0.080000                1.080000     2.67          3.750000                 0.08           3.830000
+   drone        1         46  5->5             5               5 1 -> 9 -> 6 -> 11  9 -> 6          9        6              6.0            0.080000                3.910000     0.00          3.910000                 0.25           4.160000
+   drone        1         46  5->5             5               5 1 -> 9 -> 6 -> 11 6 -> 11          6       11              7.0            0.093333                4.253333     0.00          4.253333                 0.00           4.253333
+   robot        1         22  5->5             5               5      2 -> 8 -> 11  2 -> 8          2        8              8.0            0.320000                7.433333     0.00          7.433333                 0.08           7.513333
+   robot        1         22  5->5             5               5      2 -> 8 -> 11 8 -> 11          8       11              7.0            0.280000                7.793333     0.00          7.793333                 0.00           7.793333
+   robot        2          8  5->5             5               5      0 -> 4 -> 10  0 -> 4          0        4              9.0            0.360000                0.360000     3.34          3.700000                 0.25           3.950000
+   robot        2          8  5->5             5               5      0 -> 4 -> 10 4 -> 10          4       10              5.0            0.200000                4.150000     0.00          4.150000                 0.00           4.150000
+
+Customer assignment
+ customer_id assigned_mode                       assignment_detail
+           1         truck                        truck 5: visit 1
+           2         truck                        truck 5: visit 2
+           3         truck                        truck 5: visit 3
+           4         robot      robot 2: 0 -> 4 -> 10 (truck 5->5)
+           5         truck                        truck 5: visit 5
+           6         drone drone 1: 1 -> 9 -> 6 -> 11 (truck 5->5)
+           7         truck                        truck 5: visit 7
+           8         robot      robot 1: 2 -> 8 -> 11 (truck 5->5)
+           9         drone drone 1: 1 -> 9 -> 6 -> 11 (truck 5->5)
+          10         truck                       truck 5: visit 10
+
+Arrival times
+ mode vehicle  node_id                     status arrival_time
+truck       1        0               unused_truck             
+truck       1        1               unused_truck             
+truck       1        2               unused_truck             
+truck       1        3               unused_truck             
+truck       1        4               unused_truck             
+truck       1        5               unused_truck             
+truck       1        6               unused_truck             
+truck       1        7               unused_truck             
+truck       1        8               unused_truck             
+truck       1        9               unused_truck             
+truck       1       10               unused_truck             
+truck       1       11               unused_truck             
+truck       2        0               unused_truck             
+truck       2        1               unused_truck             
+truck       2        2               unused_truck             
+truck       2        3               unused_truck             
+truck       2        4               unused_truck             
+truck       2        5               unused_truck             
+truck       2        6               unused_truck             
+truck       2        7               unused_truck             
+truck       2        8               unused_truck             
+truck       2        9               unused_truck             
+truck       2       10               unused_truck             
+truck       2       11               unused_truck             
+truck       3        0               unused_truck             
+truck       3        1               unused_truck             
+truck       3        2               unused_truck             
+truck       3        3               unused_truck             
+truck       3        4               unused_truck             
+truck       3        5               unused_truck             
+truck       3        6               unused_truck             
+truck       3        7               unused_truck             
+truck       3        8               unused_truck             
+truck       3        9               unused_truck             
+truck       3       10               unused_truck             
+truck       3       11               unused_truck             
+truck       4        0               unused_truck             
+truck       4        1               unused_truck             
+truck       4        2               unused_truck             
+truck       4        3               unused_truck             
+truck       4        4               unused_truck             
+truck       4        5               unused_truck             
+truck       4        6               unused_truck             
+truck       4        7               unused_truck             
+truck       4        8               unused_truck             
+truck       4        9               unused_truck             
+truck       4       10               unused_truck             
+truck       4       11               unused_truck             
+truck       5        0                    visited          0.0
+truck       5        1                    visited          1.0
+truck       5        2                    visited     7.113333
+truck       5        3                    visited     4.227778
+truck       5        4                not_visited             
+truck       5        5                    visited         6.15
+truck       5        6                not_visited             
+truck       5        7                    visited          3.8
+truck       5        8                not_visited             
+truck       5        9                not_visited             
+truck       5       10                    visited          6.9
+truck       5       11                    visited         10.0
+truck       6        0               unused_truck             
+truck       6        1               unused_truck             
+truck       6        2               unused_truck             
+truck       6        3               unused_truck             
+truck       6        4               unused_truck             
+truck       6        5               unused_truck             
+truck       6        6               unused_truck             
+truck       6        7               unused_truck             
+truck       6        8               unused_truck             
+truck       6        9               unused_truck             
+truck       6       10               unused_truck             
+truck       6       11               unused_truck             
+truck       7        0               unused_truck             
+truck       7        1               unused_truck             
+truck       7        2               unused_truck             
+truck       7        3               unused_truck             
+truck       7        4               unused_truck             
+truck       7        5               unused_truck             
+truck       7        6               unused_truck             
+truck       7        7               unused_truck             
+truck       7        8               unused_truck             
+truck       7        9               unused_truck             
+truck       7       10               unused_truck             
+truck       7       11               unused_truck             
+drone                0                      depot          0.0
+robot                0                      depot          0.0
+drone                1 not_served_value_arbitrary          0.0
+robot                1 not_served_value_arbitrary          0.0
+drone                2 not_served_value_arbitrary          9.9
+robot                2 not_served_value_arbitrary          0.0
+drone                3 not_served_value_arbitrary          0.0
+robot                3 not_served_value_arbitrary          0.0
+drone                4 not_served_value_arbitrary         -0.0
+robot                4                     served         6.45
+drone                5 not_served_value_arbitrary          0.0
+robot                5 not_served_value_arbitrary          0.0
+drone                6                     served         3.91
+robot                6 not_served_value_arbitrary          5.5
+drone                7 not_served_value_arbitrary          0.0
+robot                7 not_served_value_arbitrary          0.0
+drone                8 not_served_value_arbitrary          7.5
+robot                8                     served     7.433333
+drone                9                     served         3.75
+robot                9 not_served_value_arbitrary          6.2
+drone               10 not_served_value_arbitrary          0.0
+robot               10 not_served_value_arbitrary         7.15
+drone               11                      depot          0.0
+robot               11                      depot          0.0
+
+Positive penalty variables
+(none)
+
+Warnings / modeling notes
+- Operational constraints are route-completeness constraints, not explicit PDF constraints.
+- Flexible docking uses h_launch/h_recover and g_launch/g_recover.
+- Big-M used: 10000.0
+
+Excel exported to: results/final_30min\tdrp_10_25_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_solution.xlsx
+LP file: results/final_30min\tdrp_10_25_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model.lp
+Operational notes: results/final_30min\tdrp_10_25_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model_notes.md
+

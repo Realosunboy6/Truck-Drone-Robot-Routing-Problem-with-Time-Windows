@@ -1,0 +1,8 @@
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# GitHub blocks files over 100 MB. Keep these exported LPs locally,
+# but do not push them to the repository.
+results/final_5min/lp_models/tdrp_11_25_ordered_sorties_github_final_5min_3_10_no_cmax_arrival_status_model.lp
+results/final_30min/lp_models/tdrp_11_25_ordered_sorties_github_final_30min_3_10_no_cmax_arrival_status_model.lp

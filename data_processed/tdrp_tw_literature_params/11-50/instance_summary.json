@@ -1,0 +1,25 @@
+{
+  "source_dataset": "TDRP-TW",
+  "selected_raw_file": "data_raw/tdrp_tw/extracted/Instance data/Small- and medium-scale instances/11-50.txt",
+  "number_of_customers": 11,
+  "number_of_nodes": 13,
+  "number_of_arcs": 133,
+  "demand_min": 0.82,
+  "demand_max": 48.81,
+  "demand_total": 134.36999999999998,
+  "time_window_open_min": 1.0,
+  "time_window_close_max": 9.9,
+  "distance_min": 0.0,
+  "distance_max": 27.0,
+  "distance_mean": 12.781954887218046,
+  "parameter_scenario": "literature_vrpdr_table3",
+  "assumptions": [
+    "Canonical end depot n+1 duplicates raw depot 0.",
+    "Robot layer uses the same benchmark distance matrix because TDRP-TW coordinates are unavailable.",
+    "Literature platform speeds, costs, capacities, and endurance values are applied for this experiment."
+  ],
+  "warnings": [
+    "This is a truck-drone benchmark converted to a truck-drone-robot experiment.",
+    "Robot movement is a benchmark-distance surrogate, not a sidewalk-network shortest path."
+  ]
+}

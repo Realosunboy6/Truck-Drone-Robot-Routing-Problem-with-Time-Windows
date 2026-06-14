@@ -1,0 +1,1339 @@
+[
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "timestamp": "2026-05-26T01:52:37.448895+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "timestamp": "2026-05-26T01:52:38.186975+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w",
+    "timestamp": "2026-05-26T01:52:38.400870+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w",
+    "content_type": "application/json; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1",
+    "timestamp": "2026-05-26T01:52:38.645042+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files",
+    "timestamp": "2026-05-26T01:52:38.787658+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/files",
+    "timestamp": "2026-05-26T01:52:38.931586+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/files",
+    "content_type": "application/json; charset=utf-8",
+    "content_length": "13",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/api/datasets/tn4hkfrn9w/versions/1",
+    "timestamp": "2026-05-26T01:52:39.086768+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/api/datasets/tn4hkfrn9w/versions/1",
+    "content_type": "application/json; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/api/datasets/tn4hkfrn9w/versions/1/files",
+    "timestamp": "2026-05-26T01:52:39.866583+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/api/datasets/tn4hkfrn9w/versions/1/files",
+    "content_type": "application/json; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/download",
+    "timestamp": "2026-05-26T01:52:40.202055+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/01d9c749-3c4d-4431-9df3-620b2dcfe144/download",
+    "timestamp": "2026-05-26T01:52:40.532841+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/01d9c749-3c4d-4431-9df3-620b2dcfe144/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/02d710f6-e93c-475c-b5d6-f00a0657e419/download",
+    "timestamp": "2026-05-26T01:52:41.220537+00:00",
+    "status_code": 200,
+    "final_url": "https://prod-dcd-datasets-public-files-eu-west-1.s3.eu-west-1.amazonaws.com/10827bec-4f19-48ff-a186-d08699fb4682",
+    "content_type": "application/pdf",
+    "content_length": "15601",
+    "content_disposition": "attachment; filename=\"TDRP-TW definition.pdf\""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/02e74871-3895-51b2-a2a5-410d71fdc456/download",
+    "timestamp": "2026-05-26T01:52:42.843619+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/02e74871-3895-51b2-a2a5-410d71fdc456/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/0313a214-85fb-359d-9d75-614de3681a77/download",
+    "timestamp": "2026-05-26T01:52:43.188290+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/0313a214-85fb-359d-9d75-614de3681a77/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/35t5yv3c63.1/download",
+    "timestamp": "2026-05-26T01:52:43.869265+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/44dg33pjj4.2/download",
+    "timestamp": "2026-05-26T01:52:44.779347+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/5k9v3vb88h.1/download",
+    "timestamp": "2026-05-26T01:52:45.777764+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/6r5ffp7crw.1/download",
+    "timestamp": "2026-05-26T01:52:46.758751+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/9m5kjsvmyn.1/download",
+    "timestamp": "2026-05-26T01:52:48.197563+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/d37kcsp8jg.4/download",
+    "timestamp": "2026-05-26T01:52:49.187876+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/jxj8bn2vyf.3/download",
+    "timestamp": "2026-05-26T01:52:50.018825+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/rngz5kyb22.2/download",
+    "timestamp": "2026-05-26T01:52:50.894606+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/tn4hkfrn9w.1/download",
+    "timestamp": "2026-05-26T01:52:51.778275+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/zghtg5kyvv.1/download",
+    "timestamp": "2026-05-26T01:52:52.665394+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/10.17632/zsv69t2j4r.1/download",
+    "timestamp": "2026-05-26T01:52:53.509908+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/148763bd-d958-49f1-8d2b-e4cebde0eb42/download",
+    "timestamp": "2026-05-26T01:52:54.848686+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/148763bd-d958-49f1-8d2b-e4cebde0eb42/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/14ad496f-80ce-5623-9d0f-4b69d2cb664c/download",
+    "timestamp": "2026-05-26T01:52:55.548352+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/14ad496f-80ce-5623-9d0f-4b69d2cb664c/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/1b12901f-561e-3ec2-9cf2-bd7eabd3e229/download",
+    "timestamp": "2026-05-26T01:52:56.248090+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/1b12901f-561e-3ec2-9cf2-bd7eabd3e229/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/35t5yv3c63/download",
+    "timestamp": "2026-05-26T01:52:57.233975+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/35t5yv3c63/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/44dg33pjj4/download",
+    "timestamp": "2026-05-26T01:52:57.936627+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/44dg33pjj4/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/4d28170d-987c-3130-9125-fad0d036da45/download",
+    "timestamp": "2026-05-26T01:52:58.600052+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/4d28170d-987c-3130-9125-fad0d036da45/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/56cfcb98-cf2d-3815-8c4e-408d16e666ac/download",
+    "timestamp": "2026-05-26T01:52:59.267530+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/56cfcb98-cf2d-3815-8c4e-408d16e666ac/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/5k9v3vb88h/download",
+    "timestamp": "2026-05-26T01:52:59.931197+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/5k9v3vb88h/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/6r5ffp7crw/download",
+    "timestamp": "2026-05-26T01:53:00.610469+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/6r5ffp7crw/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/7277c7be-e03d-340f-91a6-025b38931980/download",
+    "timestamp": "2026-05-26T01:53:01.256503+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/7277c7be-e03d-340f-91a6-025b38931980/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/730fac5b-498f-5bb2-a0d3-63e1e56f6379/download",
+    "timestamp": "2026-05-26T01:53:01.947338+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/730fac5b-498f-5bb2-a0d3-63e1e56f6379/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/81e672f0-0d87-4717-b00c-eaf7fbc607a0/download",
+    "timestamp": "2026-05-26T01:53:02.622227+00:00",
+    "status_code": 200,
+    "final_url": "https://prod-dcd-datasets-public-files-eu-west-1.s3.eu-west-1.amazonaws.com/6e3e0705-0211-4d48-bfed-cfe8243ebce4",
+    "content_type": "application/octet-stream",
+    "content_length": "663467",
+    "content_disposition": "attachment; filename=\"Instance data.rar\""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/8554ac88-3a84-3704-8b69-6e060967940f/download",
+    "timestamp": "2026-05-26T01:53:04.918773+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/8554ac88-3a84-3704-8b69-6e060967940f/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/86338f66-f401-31cf-b540-d50e47129dae/download",
+    "timestamp": "2026-05-26T01:53:05.273702+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/86338f66-f401-31cf-b540-d50e47129dae/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/96c78d08-d9ac-5de9-85d7-f85694339a81/download",
+    "timestamp": "2026-05-26T01:53:05.978670+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/96c78d08-d9ac-5de9-85d7-f85694339a81/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/9b853c69-1d78-4c03-b0df-9e5a36f2b6be/download",
+    "timestamp": "2026-05-26T01:53:06.626394+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/9b853c69-1d78-4c03-b0df-9e5a36f2b6be/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/9d63ad1d-c391-5c35-a12e-cafe17017098/download",
+    "timestamp": "2026-05-26T01:53:07.324654+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/9d63ad1d-c391-5c35-a12e-cafe17017098/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/9dbc1876-4ae3-4f95-990b-84211c37c663/download",
+    "timestamp": "2026-05-26T01:53:07.973534+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/9dbc1876-4ae3-4f95-990b-84211c37c663/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/9m5kjsvmyn/download",
+    "timestamp": "2026-05-26T01:53:08.619840+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/9m5kjsvmyn/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/MENDELEY_DATA/download",
+    "timestamp": "2026-05-26T01:53:09.307397+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/MENDELEY_DATA/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/a984aee6-8140-37f9-b808-710f3023e7e0/download",
+    "timestamp": "2026-05-26T01:53:09.950132+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/a984aee6-8140-37f9-b808-710f3023e7e0/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/ab60937a-8a7e-3d84-980d-7becaba536db/download",
+    "timestamp": "2026-05-26T01:53:10.729008+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/ab60937a-8a7e-3d84-980d-7becaba536db/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/bc124e51-fbc5-51ae-bb66-39d4641f09eb/download",
+    "timestamp": "2026-05-26T01:53:11.396724+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/bc124e51-fbc5-51ae-bb66-39d4641f09eb/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/bffd11fb-2a65-3ae5-b30f-376a2279cd6a/download",
+    "timestamp": "2026-05-26T01:53:12.071759+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/bffd11fb-2a65-3ae5-b30f-376a2279cd6a/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/c3952461-9c43-4c84-8aed-c0c1df609040/download",
+    "timestamp": "2026-05-26T01:53:12.754137+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/c3952461-9c43-4c84-8aed-c0c1df609040/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/d37kcsp8jg/download",
+    "timestamp": "2026-05-26T01:53:13.755762+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/d37kcsp8jg/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/d8026a69-d66a-5567-b263-42a2d698ef80/download",
+    "timestamp": "2026-05-26T01:53:14.500775+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/d8026a69-d66a-5567-b263-42a2d698ef80/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204053/download",
+    "timestamp": "2026-05-26T01:53:15.194416+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204055/download",
+    "timestamp": "2026-05-26T01:53:16.089935+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189352157/download",
+    "timestamp": "2026-05-26T01:53:16.912283+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189721312/download",
+    "timestamp": "2026-05-26T01:53:17.871292+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-190195193/download",
+    "timestamp": "2026-05-26T01:53:18.719773+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621424/download",
+    "timestamp": "2026-05-26T01:53:19.594301+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621475/download",
+    "timestamp": "2026-05-26T01:53:20.434140+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-209494409/download",
+    "timestamp": "2026-05-26T01:53:21.365387+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-210636270/download",
+    "timestamp": "2026-05-26T01:53:22.282302+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582528/download",
+    "timestamp": "2026-05-26T01:53:23.207540+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582623/download",
+    "timestamp": "2026-05-26T01:53:24.066202+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523212/download",
+    "timestamp": "2026-05-26T01:53:24.943561+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523705/download",
+    "timestamp": "2026-05-26T01:53:25.855846+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253045711/download",
+    "timestamp": "2026-05-26T01:53:26.780412+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253057919/download",
+    "timestamp": "2026-05-26T01:53:27.679777+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-257549942/download",
+    "timestamp": "2026-05-26T01:53:28.583805+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-264266297/download",
+    "timestamp": "2026-05-26T01:53:29.429477+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-409078401/download",
+    "timestamp": "2026-05-26T01:53:30.319707+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/ecb64011-71f0-5223-b4e4-4d27d5f51d83/download",
+    "timestamp": "2026-05-26T01:53:31.185796+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/ecb64011-71f0-5223-b4e4-4d27d5f51d83/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250028195/download",
+    "timestamp": "2026-05-26T01:53:31.885796+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250069590/download",
+    "timestamp": "2026-05-26T01:53:32.800033+00:00",
+    "status_code": 200,
+    "final_url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/jxj8bn2vyf/download",
+    "timestamp": "2026-05-26T01:53:33.696995+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/jxj8bn2vyf/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/rngz5kyb22/download",
+    "timestamp": "2026-05-26T01:53:34.351005+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/rngz5kyb22/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/tn4hkfrn9w/download",
+    "timestamp": "2026-05-26T01:53:35.005551+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/tn4hkfrn9w/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/zghtg5kyvv/download",
+    "timestamp": "2026-05-26T01:53:35.695230+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/zghtg5kyvv/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/1/files/zsv69t2j4r/download",
+    "timestamp": "2026-05-26T01:53:36.363847+00:00",
+    "status_code": 400,
+    "final_url": "https://data.mendeley.com/v1/datasets/tn4hkfrn9w/1/files/zsv69t2j4r/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/datasets/tn4hkfrn9w/download",
+    "timestamp": "2026-05-26T01:53:37.041164+00:00",
+    "error": "TooManyRedirects('Exceeded 30 redirects.')"
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/download",
+    "timestamp": "2026-05-26T01:53:42.059173+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/01d9c749-3c4d-4431-9df3-620b2dcfe144/download",
+    "timestamp": "2026-05-26T01:53:42.190306+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/01d9c749-3c4d-4431-9df3-620b2dcfe144/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/02d710f6-e93c-475c-b5d6-f00a0657e419/download",
+    "timestamp": "2026-05-26T01:53:42.667144+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/02d710f6-e93c-475c-b5d6-f00a0657e419/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/02e74871-3895-51b2-a2a5-410d71fdc456/download",
+    "timestamp": "2026-05-26T01:53:43.141747+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/02e74871-3895-51b2-a2a5-410d71fdc456/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/0313a214-85fb-359d-9d75-614de3681a77/download",
+    "timestamp": "2026-05-26T01:53:43.605484+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/0313a214-85fb-359d-9d75-614de3681a77/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/35t5yv3c63.1/download",
+    "timestamp": "2026-05-26T01:53:44.139780+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/35t5yv3c63.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/44dg33pjj4.2/download",
+    "timestamp": "2026-05-26T01:53:44.672364+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/44dg33pjj4.2/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/5k9v3vb88h.1/download",
+    "timestamp": "2026-05-26T01:53:45.204578+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/5k9v3vb88h.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/6r5ffp7crw.1/download",
+    "timestamp": "2026-05-26T01:53:45.674048+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/6r5ffp7crw.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/9m5kjsvmyn.1/download",
+    "timestamp": "2026-05-26T01:53:46.148993+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/9m5kjsvmyn.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/d37kcsp8jg.4/download",
+    "timestamp": "2026-05-26T01:53:46.612585+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/d37kcsp8jg.4/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/jxj8bn2vyf.3/download",
+    "timestamp": "2026-05-26T01:53:47.062533+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/jxj8bn2vyf.3/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/rngz5kyb22.2/download",
+    "timestamp": "2026-05-26T01:53:47.541159+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/rngz5kyb22.2/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/tn4hkfrn9w.1/download",
+    "timestamp": "2026-05-26T01:53:48.000064+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/tn4hkfrn9w.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/zghtg5kyvv.1/download",
+    "timestamp": "2026-05-26T01:53:48.456687+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/zghtg5kyvv.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/zsv69t2j4r.1/download",
+    "timestamp": "2026-05-26T01:53:48.930212+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/10.17632/zsv69t2j4r.1/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/148763bd-d958-49f1-8d2b-e4cebde0eb42/download",
+    "timestamp": "2026-05-26T01:53:49.392868+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/148763bd-d958-49f1-8d2b-e4cebde0eb42/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/14ad496f-80ce-5623-9d0f-4b69d2cb664c/download",
+    "timestamp": "2026-05-26T01:53:49.863634+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/14ad496f-80ce-5623-9d0f-4b69d2cb664c/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/1b12901f-561e-3ec2-9cf2-bd7eabd3e229/download",
+    "timestamp": "2026-05-26T01:53:50.339888+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/1b12901f-561e-3ec2-9cf2-bd7eabd3e229/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/35t5yv3c63/download",
+    "timestamp": "2026-05-26T01:53:50.811121+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/35t5yv3c63/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/44dg33pjj4/download",
+    "timestamp": "2026-05-26T01:53:51.283484+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/44dg33pjj4/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/4d28170d-987c-3130-9125-fad0d036da45/download",
+    "timestamp": "2026-05-26T01:53:51.740445+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/4d28170d-987c-3130-9125-fad0d036da45/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/56cfcb98-cf2d-3815-8c4e-408d16e666ac/download",
+    "timestamp": "2026-05-26T01:53:52.215091+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/56cfcb98-cf2d-3815-8c4e-408d16e666ac/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/5k9v3vb88h/download",
+    "timestamp": "2026-05-26T01:53:52.755477+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/5k9v3vb88h/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/6r5ffp7crw/download",
+    "timestamp": "2026-05-26T01:53:53.217140+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/6r5ffp7crw/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/7277c7be-e03d-340f-91a6-025b38931980/download",
+    "timestamp": "2026-05-26T01:53:53.670838+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/7277c7be-e03d-340f-91a6-025b38931980/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/730fac5b-498f-5bb2-a0d3-63e1e56f6379/download",
+    "timestamp": "2026-05-26T01:53:54.120479+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/730fac5b-498f-5bb2-a0d3-63e1e56f6379/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/81e672f0-0d87-4717-b00c-eaf7fbc607a0/download",
+    "timestamp": "2026-05-26T01:53:54.590796+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/81e672f0-0d87-4717-b00c-eaf7fbc607a0/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/8554ac88-3a84-3704-8b69-6e060967940f/download",
+    "timestamp": "2026-05-26T01:53:55.035828+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/8554ac88-3a84-3704-8b69-6e060967940f/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/86338f66-f401-31cf-b540-d50e47129dae/download",
+    "timestamp": "2026-05-26T01:53:55.502391+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/86338f66-f401-31cf-b540-d50e47129dae/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/96c78d08-d9ac-5de9-85d7-f85694339a81/download",
+    "timestamp": "2026-05-26T01:53:55.950324+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/96c78d08-d9ac-5de9-85d7-f85694339a81/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9b853c69-1d78-4c03-b0df-9e5a36f2b6be/download",
+    "timestamp": "2026-05-26T01:53:56.425822+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9b853c69-1d78-4c03-b0df-9e5a36f2b6be/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9d63ad1d-c391-5c35-a12e-cafe17017098/download",
+    "timestamp": "2026-05-26T01:53:56.888734+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9d63ad1d-c391-5c35-a12e-cafe17017098/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9dbc1876-4ae3-4f95-990b-84211c37c663/download",
+    "timestamp": "2026-05-26T01:53:57.351171+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9dbc1876-4ae3-4f95-990b-84211c37c663/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9m5kjsvmyn/download",
+    "timestamp": "2026-05-26T01:53:57.884723+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/9m5kjsvmyn/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/MENDELEY_DATA/download",
+    "timestamp": "2026-05-26T01:53:58.358810+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/MENDELEY_DATA/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/a984aee6-8140-37f9-b808-710f3023e7e0/download",
+    "timestamp": "2026-05-26T01:53:58.813348+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/a984aee6-8140-37f9-b808-710f3023e7e0/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/ab60937a-8a7e-3d84-980d-7becaba536db/download",
+    "timestamp": "2026-05-26T01:53:59.271602+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/ab60937a-8a7e-3d84-980d-7becaba536db/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/bc124e51-fbc5-51ae-bb66-39d4641f09eb/download",
+    "timestamp": "2026-05-26T01:53:59.753205+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/bc124e51-fbc5-51ae-bb66-39d4641f09eb/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/bffd11fb-2a65-3ae5-b30f-376a2279cd6a/download",
+    "timestamp": "2026-05-26T01:54:00.215490+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/bffd11fb-2a65-3ae5-b30f-376a2279cd6a/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/c3952461-9c43-4c84-8aed-c0c1df609040/download",
+    "timestamp": "2026-05-26T01:54:00.696460+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/c3952461-9c43-4c84-8aed-c0c1df609040/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/d37kcsp8jg/download",
+    "timestamp": "2026-05-26T01:54:01.179954+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/d37kcsp8jg/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/d8026a69-d66a-5567-b263-42a2d698ef80/download",
+    "timestamp": "2026-05-26T01:54:01.639475+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/d8026a69-d66a-5567-b263-42a2d698ef80/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204053/download",
+    "timestamp": "2026-05-26T01:54:02.416807+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204053/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204055/download",
+    "timestamp": "2026-05-26T01:54:02.931146+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-186204055/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189352157/download",
+    "timestamp": "2026-05-26T01:54:03.372406+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189352157/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189721312/download",
+    "timestamp": "2026-05-26T01:54:03.868182+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-189721312/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-190195193/download",
+    "timestamp": "2026-05-26T01:54:04.346435+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-190195193/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621424/download",
+    "timestamp": "2026-05-26T01:54:04.802285+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621424/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621475/download",
+    "timestamp": "2026-05-26T01:54:05.276313+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-192621475/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-209494409/download",
+    "timestamp": "2026-05-26T01:54:05.732867+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-209494409/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-210636270/download",
+    "timestamp": "2026-05-26T01:54:06.212844+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-210636270/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582528/download",
+    "timestamp": "2026-05-26T01:54:06.678326+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582528/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582623/download",
+    "timestamp": "2026-05-26T01:54:07.154448+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-235582623/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523212/download",
+    "timestamp": "2026-05-26T01:54:07.673799+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523212/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523705/download",
+    "timestamp": "2026-05-26T01:54:08.127909+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-249523705/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253045711/download",
+    "timestamp": "2026-05-26T01:54:08.584057+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253045711/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253057919/download",
+    "timestamp": "2026-05-26T01:54:09.046363+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-253057919/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-257549942/download",
+    "timestamp": "2026-05-26T01:54:09.516400+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-257549942/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-264266297/download",
+    "timestamp": "2026-05-26T01:54:09.983991+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-264266297/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-409078401/download",
+    "timestamp": "2026-05-26T01:54:10.440358+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/data.elsevier.com/vocabulary/OmniScience/Concept-409078401/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/ecb64011-71f0-5223-b4e4-4d27d5f51d83/download",
+    "timestamp": "2026-05-26T01:54:10.925754+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/ecb64011-71f0-5223-b4e4-4d27d5f51d83/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250028195/download",
+    "timestamp": "2026-05-26T01:54:11.378862+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250028195/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250069590/download",
+    "timestamp": "2026-05-26T01:54:11.884513+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/http://data.elsevier.com/vocabulary/OmniScience/Concept-250069590/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/jxj8bn2vyf/download",
+    "timestamp": "2026-05-26T01:54:12.340826+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/jxj8bn2vyf/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/rngz5kyb22/download",
+    "timestamp": "2026-05-26T01:54:12.841611+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/rngz5kyb22/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/tn4hkfrn9w/download",
+    "timestamp": "2026-05-26T01:54:13.328795+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/tn4hkfrn9w/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/zghtg5kyvv/download",
+    "timestamp": "2026-05-26T01:54:13.819709+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/zghtg5kyvv/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/zsv69t2j4r/download",
+    "timestamp": "2026-05-26T01:54:14.342886+00:00",
+    "status_code": 404,
+    "final_url": "https://data.mendeley.com/public-api/datasets/tn4hkfrn9w/versions/1/files/zsv69t2j4r/download",
+    "content_type": "text/html; charset=utf-8",
+    "content_length": "",
+    "content_disposition": ""
+  },
+  {
+    "url": "https://data.mendeley.com/public-files/datasets/tn4hkfrn9w/files/02d710f6-e93c-475c-b5d6-f00a0657e419/file_downloaded",
+    "timestamp": "2026-05-26T01:54:14.824978+00:00",
+    "status_code": 200,
+    "final_url": "https://prod-dcd-datasets-public-files-eu-west-1.s3.eu-west-1.amazonaws.com/10827bec-4f19-48ff-a186-d08699fb4682",
+    "content_type": "application/pdf",
+    "content_length": "15601",
+    "content_disposition": "attachment; filename=\"TDRP-TW definition.pdf\""
+  },
+  {
+    "url": "https://data.mendeley.com/public-files/datasets/tn4hkfrn9w/files/81e672f0-0d87-4717-b00c-eaf7fbc607a0/file_downloaded",
+    "timestamp": "2026-05-26T01:54:16.152025+00:00",
+    "status_code": 200,
+    "final_url": "https://prod-dcd-datasets-public-files-eu-west-1.s3.eu-west-1.amazonaws.com/6e3e0705-0211-4d48-bfed-cfe8243ebce4",
+    "content_type": "application/octet-stream",
+    "content_length": "663467",
+    "content_disposition": "attachment; filename=\"Instance data.rar\""
+  }
+]
