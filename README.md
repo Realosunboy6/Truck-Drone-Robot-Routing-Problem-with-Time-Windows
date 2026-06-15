@@ -62,7 +62,7 @@ The file `parameter_usage_audit.csv` lists every key in each case's `parameters.
 
 The active soft penalties are `lambda_T` (route-duration excess against `T_max`) and `lambda_W` (time-window lateness). Capacity and endurance are hard constraints.
 
-**Fix (2026-06-13):** `C_w_drone` was previously misclassified as unused. The drone time/waiting cost term used `C_w` (the truck coefficient) instead. The cost expressions now read `C_w`, `C_w_drone`, and `C_w_r` separately for truck, drone, and robot respectively:
+The cost expressions now read `C_w`, `C_w_drone`, and `C_w_r` separately for truck, drone, and robot respectively:
 
 ```text
 truck cost = truck_time * C_w   + distance        * C_veh
