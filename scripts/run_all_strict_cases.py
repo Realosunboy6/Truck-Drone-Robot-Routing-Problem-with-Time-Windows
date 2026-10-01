@@ -9,7 +9,7 @@ import pandas as pd
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
-DATA_ROOT = PACKAGE_ROOT / "data_processed" / "tdrp_tw_literature_params"
+DATA_ROOT = Path(os.environ.get("DRT_DATA_ROOT", PACKAGE_ROOT / "data_processed" / "tdrp_tw_literature_params"))
 RESULTS_ROOT = PACKAGE_ROOT / "results" / os.environ.get("DRT_BATCH_RESULTS_SUBDIR", "rerun_30min")
 MODEL_PATH = PACKAGE_ROOT / "model" / "capped_flexible_docking_ordered_sortie_model.py"
 RUN_TAG = os.environ.get("DRT_RUN_TAG", "github_final_30min_3_10_no_cmax_arrival_status")
@@ -88,13 +88,25 @@ def main() -> int:
             f"lp_export={EXPORT_LP} fast_build={FAST_BUILD} warm_start={USE_TRUCK_WARM_START}",
             flush=True,
         )
-        completed = subprocess.run([sys.executable, str(MODEL_PATH)], env=env, cwd=str(PACKAGE_ROOT))
+        # A failed case must not kill the batch or leave a blank row: record the
+        # error and keep going (this is what the 11-25 OOM exposed).
+        case_error = ""
+        try:
+            completed = subprocess.run([sys.executable, str(MODEL_PATH)], env=env, cwd=str(PACKAGE_ROOT))
+            return_code = completed.returncode
+        except Exception as exc:  # noqa: BLE001
+            return_code = -1
+            case_error = f"{type(exc).__name__}: {exc}"
 
-        kpis = read_kpis(excel_path)
+        try:
+            kpis = read_kpis(excel_path)
+        except Exception as exc:  # noqa: BLE001
+            kpis = {}
+            case_error = case_error or f"{type(exc).__name__}: {exc}"
         rows.append(
             {
                 "case": case,
-                "return_code": completed.returncode,
+                "return_code": return_code,
                 "excel_path": str(excel_path),
                 "solve_status": kpis.get("Solve Status", ""),
                 "objective": kpis.get("Objective Value", ""),
@@ -106,12 +118,16 @@ def main() -> int:
                 "total_penalty": kpis.get("Total Penalty", ""),
                 "route_duration_penalty": kpis.get("Route Duration Penalty", ""),
                 "time_window_penalty": kpis.get("Time Window Penalty", ""),
+                "error": case_error,
             }
         )
 
-        for issue in audit_duplicate_platform_sorties(excel_path):
-            issue["case"] = case
-            duplicate_issues.append(issue)
+        try:
+            for issue in audit_duplicate_platform_sorties(excel_path):
+                issue["case"] = case
+                duplicate_issues.append(issue)
+        except Exception as exc:  # noqa: BLE001
+            duplicate_issues.append({"case": case, "issue": "audit_failed", "error": f"{type(exc).__name__}: {exc}"})
 
     summary = pd.DataFrame(rows)
     summary.to_csv(RESULTS_ROOT / f"{RUN_TAG}_run_summary.csv", index=False)

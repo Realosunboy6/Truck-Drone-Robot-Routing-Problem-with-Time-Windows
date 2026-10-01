@@ -1,0 +1,30 @@
+{
+  "source_dataset": "OSM real-world",
+  "source_place": "bbox(41.945,41.915,-88.735,-88.765)",
+  "generator_seed": 7,
+  "number_of_customers": 25,
+  "number_of_nodes": 27,
+  "number_of_arcs": 651,
+  "demand_min": 0.71,
+  "demand_max": 7.83,
+  "demand_total": 52.5,
+  "time_window_open_min": 0.02,
+  "time_window_close_max": 7.72,
+  "truck_routing_source": "OSRM table v1/driving via router.project-osrm.org (OSM road network)",
+  "robot_routing_source": "Valhalla sources_to_targets, costing=pedestrian via valhalla1.openstreetmap.de (OSM walk network)",
+  "drone_distance_source": "haversine great-circle on WGS84",
+  "depot_lat": 41.927987,
+  "depot_lon": -88.752732,
+  "parameter_scenario": "realworld_osm_v1",
+  "assumptions": [
+    "Truck travel: OSRM shortest-path driving distances on the OSM road network at a constant 45 km/h.",
+    "Robot travel: Valhalla shortest-path pedestrian distances on the OSM walk network at 6 km/h.",
+    "Drone travel: haversine great-circle distance at 80 km/h (unrestricted airspace).",
+    "Canonical end depot n+1 duplicates depot 0."
+  ],
+  "warnings": [
+    "Truck speed is constant; OSM maxspeed-based travel times are a future refinement.",
+    "Drone flight is straight-line; no-fly zones and wind are not modeled.",
+    "Routing data comes from public demo servers (OSRM, Valhalla); for publication-grade instances use a self-hosted engine or a local OSM extract."
+  ]
+}

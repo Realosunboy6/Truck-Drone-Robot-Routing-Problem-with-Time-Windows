@@ -6,10 +6,13 @@ This folder contains the report-facing version of the strict truck-drone-robot m
 
 - `data_raw/tdrp_tw`: raw TDRP-TW benchmark files and source metadata.
 - `data_processed/tdrp_tw_literature_params`: processed small benchmark cases using the literature-based platform parameters.
+- `data_processed/tdrp_tw_realistic_v1`: repaired benchmark set — all 75 TDRP-TW cases (25 instances x 3 drone-eligibility levels) rebuilt with realistic hardware parameters and a per-instance `T_max` set to the raw depot close time, so route-duration penalties only reflect genuine horizon violations. See "Realistic-Parameter Dataset (v1)" below.
 - `model/capped_flexible_docking_ordered_sortie_model.py`: capped flexible-docking ordered-sortie model with environment-variable inputs for one case or batch runs.
-- `scripts/build_tdrp_literature_instance.py`: script used to build processed case data.
-- `scripts/run_all_strict_cases.py`: reruns all processed strict-model cases and saves outputs under `results`.
-- `scripts/summarize_strict_results.py`: summarizes the saved Excel workbooks and checks payload, distance, and duplicate sortie issues.
+- `scripts/build_tdrp_literature_instance.py`: script used to build processed case data (`--scenario literature` reproduces the original set; `--scenario realistic` builds the repaired v1 set).
+- `scripts/build_real_world_instance.py`: builds brand-new instances from OpenStreetMap — truck travel on the OSM drive network, robot travel on the OSM walk network, drone travel as great-circle distance. See "Real-World Instance Generator" below.
+- `scripts/validate_realistic_v1.py`: validates every case in a processed set (matrix dimensions, zero diagonals, finite/nonnegative values, `T_max` vs all time windows, provenance fields).
+- `scripts/run_all_strict_cases.py`: reruns all processed strict-model cases and saves outputs under `results` (`DRT_DATA_ROOT` selects the processed set; failed cases are recorded with an `error` field instead of aborting the batch).
+- `scripts/summarize_strict_results.py`: summarizes the saved Excel workbooks and checks payload, distance, and duplicate sortie issues (`DRT_DATA_ROOT` selects the processed set; audit limits are read from each case's `parameters.json`).
 - `pdf`: final code-faithful formulation PDF/TEX and the reference math-model PDF used for traceability.
 - `results`: organized output folder containing the official 5-minute and 30-minute capped-model runs.
 
@@ -101,13 +104,15 @@ ROBOTS_CARRIED_AT_DEPOT: 1
 MAX_ROBOTS_PER_TRUCK: 2
 ```
 
-They are intentionally separate fields so real robot-specific data can be inserted later without changing the formulation.
+They are intentionally separate fields so real robot-specific data can be inserted later without changing the formulation. In the realistic v1 dataset and the real-world generator, robot physical parameters (speed, payload, endurance) are literature-based (see below); the placeholder status that remains is the robot travel matrix in the TDRP-derived set, which still reuses truck road distances until pedestrian-network data is wired in. The real-world generator already uses the OSM walk network for robots.
 
 ## Truck Route Duration
 
-`T_max` (10 h in the TDRP-TW data) is applied as a truck route-duration limit from the fixed depot departure time. In this package, every truck departs the start depot at clock time 0. Route-duration penalties therefore apply when a used truck reaches the end depot after `T_max`.
+`T_max` is applied as a truck route-duration limit from the fixed depot departure time. In this package, every truck departs the start depot at clock time 0. Route-duration penalties therefore apply when a used truck reaches the end depot after `T_max`.
 
-Some TDRP-TW customer time windows open much later than 10 h, with several small cases having service windows in the 20-40 h horizon. Under the fixed-departure interpretation, those late windows can make the route-duration penalty dominate the objective even when all service time windows and synchronization constraints are satisfied. This is a data/formulation interaction, not a capacity or synchronization violation; report tables should therefore show operating cost, route-duration penalty, and total penalty separately.
+The original TDRP-TW processed set used a flat `T_max = 10 h` while several small cases have service windows in the 20-40 h horizon. Under the fixed-departure interpretation, those late windows can make the route-duration penalty dominate the objective even when all service time windows and synchronization constraints are satisfied. This is a data/formulation interaction, not a capacity or synchronization violation; report tables should therefore show operating cost, route-duration penalty, and total penalty separately.
+
+The repaired `tdrp_tw_realistic_v1` dataset (see below) sets `T_max` per instance to the raw instance's depot close time, so route-duration penalties only trigger on genuine horizon violations.
 
 The original formulation writes the route-duration condition for trucks, drones, and robots. In this implementation, the penalty is applied through the truck end-depot arrival because drone/robot recovery is synchronized with a truck: if a platform finishes late, the recovering truck must wait for it, and that delay propagates to the truck's end-depot time and route-duration penalty.
 
@@ -189,6 +194,47 @@ py -3.10 -m pip install -r requirements.txt
 ```
 
 The model needs a working IBM CPLEX installation (the `cplex` and `docplex` packages must match your CPLEX version).
+
+## Realistic-Parameter Dataset (v1)
+
+`data_processed/tdrp_tw_realistic_v1` repairs the two biggest data distortions in the original processed set:
+
+1. **Per-instance `T_max`.** The flat 10 h horizon is replaced by each raw instance's depot close time (e.g. 20.6 h for case 11-25), so the `lambda_T = 1000` route-duration penalty no longer dominates the objective on late-window cases.
+2. **Literature-based hardware.** Drone: 80 km/h, 5 kg payload, 40 km sortie range (Sacramento et al., 2019 — 50 mph, 30-minute endurance). Robot: 6 km/h, 10 kg payload, 12 km sortie range (Starship Gen 3; Ostermeier, 2021). Costs remain the VRP-DR Table 3 structure (Malik et al., arXiv:2505.23584).
+
+The set covers all 75 TDRP-TW cases (25 instances x 25/50/75% drone-eligibility levels), each tagged with `parameter_scenario`, `parameter_source`, `T_max_source`, and per-case `assumptions`/`warnings` in `parameters.json`. Build it with:
+
+```bash
+python scripts/build_tdrp_literature_instance.py --scenario realistic
+```
+
+Validate it with:
+
+```bash
+python scripts/validate_realistic_v1.py data_processed/tdrp_tw_realistic_v1
+```
+
+Known remaining placeholder: the robot travel matrix still reuses truck road distances (the source TDRP-TW data has no robot layer). This is flagged in every case's `warnings` until pedestrian-network data is wired in — which is exactly what the real-world generator below does.
+
+## Real-World Instance Generator
+
+`scripts/build_real_world_instance.py` builds brand-new instances from OpenStreetMap instead of repairing benchmark data, so every travel layer is mode-realistic:
+
+- **Truck:** shortest-path distances on the OSM *drive* network (45 km/h).
+- **Robot:** shortest-path distances on the OSM *walk* (pedestrian) network (6 km/h).
+- **Drone:** haversine great-circle distances (80 km/h, unrestricted airspace).
+
+Customers are sampled from the pedestrian network with a minimum separation; the depot is the road-network node nearest the customer centroid. Demands follow the Amazon parcel rule used across the literature (~86% of parcels under 5 lbs / 2.27 kg, drone/robot eligible; the rest heavier truck-leaning parcels). Time windows sit inside an 8-hour working day (each customer gets a 2-hour window), and `T_max` equals the 8-hour horizon. Output matches the model's CSV/JSON schema exactly, with full provenance (`source_place`, `generator_seed`, network sizes, assumptions, warnings) in `parameters.json` and `instance_summary.json`.
+
+Requires `osmnx` (`pip install osmnx`) and network access to OpenStreetMap's geocoder/download servers.
+
+```bash
+python scripts/build_real_world_instance.py \
+    --place "DeKalb, Illinois, USA" --n-customers 25 --seed 7 \
+    --out-dir data_processed/realworld_dekalb_il_25
+```
+
+(`--bbox north,south,east,west` and `--depot-latlon lat,lon` are also supported.)
 
 ## Benchmark Data Attribution
 

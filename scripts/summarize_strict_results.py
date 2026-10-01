@@ -10,8 +10,17 @@ import pandas as pd
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 RESULTS_ROOT = PACKAGE_ROOT / "results" / os.environ.get("DRT_BATCH_RESULTS_SUBDIR", "rerun_30min")
-DATA_ROOT = PACKAGE_ROOT / "data_processed" / "tdrp_tw_literature_params"
+DATA_ROOT = Path(os.environ.get("DRT_DATA_ROOT", PACKAGE_ROOT / "data_processed" / "tdrp_tw_literature_params"))
 RUN_TAG = os.environ.get("DRT_RUN_TAG", "github_final_30min_3_10_no_cmax_arrival_status")
+
+
+def safe_int(value, default: int = -1) -> int:
+    """int() that survives NaN/None from failed or partial workbooks."""
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return default
+    return result
 
 
 def case_key(path: Path) -> tuple[int, int]:
@@ -36,7 +45,7 @@ def selected_routes(xl: pd.ExcelFile, sheet_name: str, vehicle_col: str) -> str:
     for row in df.itertuples(index=False):
         truck_part = ""
         if hasattr(row, "launch_truck") and hasattr(row, "recovery_truck"):
-            truck_part = f"truck={int(row.launch_truck)}->{int(row.recovery_truck)}"
+            truck_part = f"truck={safe_int(row.launch_truck)}->{safe_int(row.recovery_truck)}"
         parts = [
             f"{vehicle_col} {getattr(row, vehicle_col)}: {row.route}",
             truck_part,
@@ -146,13 +155,24 @@ def audit_solution(path: Path, xl: pd.ExcelFile, case: str) -> list[dict[str, ob
     issues: list[dict[str, object]] = []
     params_path = DATA_ROOT / case / "parameters.json"
     params = json.loads(params_path.read_text(encoding="utf-8-sig")) if params_path.exists() else {}
-    max_drones_per_truck = int(params.get("MAX_DRONES_PER_TRUCK", 10**9))
-    drones_carried_at_depot = int(params.get("DRONES_CARRIED_AT_DEPOT", 10**9))
-    max_robots_per_truck = int(params.get("MAX_ROBOTS_PER_TRUCK", 10**9))
-    robots_carried_at_depot = int(params.get("ROBOTS_CARRIED_AT_DEPOT", 10**9))
+    max_drones_per_truck = safe_int(params.get("MAX_DRONES_PER_TRUCK", 10**9), 10**9)
+    drones_carried_at_depot = safe_int(params.get("DRONES_CARRIED_AT_DEPOT", 10**9), 10**9)
+    max_robots_per_truck = safe_int(params.get("MAX_ROBOTS_PER_TRUCK", 10**9), 10**9)
+    robots_carried_at_depot = safe_int(params.get("ROBOTS_CARRIED_AT_DEPOT", 10**9), 10**9)
+    # Audit limits come from the case parameters, not hardcoded v0 values.
     limits = {
-        "drone": {"payload": 25.0, "distance": 20.0, "sheet": "Drone Sorties", "vehicle": "drone"},
-        "robot": {"payload": 20.0, "distance": 15.0, "sheet": "Robot Sorties", "vehicle": "robot"},
+        "drone": {
+            "payload": float(params.get("Q_d", 25.0)),
+            "distance": float(params.get("E_d", 20.0)),
+            "sheet": "Drone Sorties",
+            "vehicle": "drone",
+        },
+        "robot": {
+            "payload": float(params.get("Q_r", 20.0)),
+            "distance": float(params.get("E_r", 15.0)),
+            "sheet": "Robot Sorties",
+            "vehicle": "robot",
+        },
     }
     for platform, cfg in limits.items():
         df = pd.read_excel(xl, cfg["sheet"])
@@ -196,29 +216,35 @@ def main() -> int:
     for path in sorted(RESULTS_ROOT.glob("*_solution.xlsx"), key=case_key):
         n, pct = case_key(path)
         case = f"{n}-{pct}"
-        xl = pd.ExcelFile(path)
-        kpis = read_kpis(xl)
-        truck_routes = pd.read_excel(xl, "Truck Routes")
-        used_trucks = truck_routes[truck_routes["status"].astype(str) == "used"]
-        rows.append(
-            {
-                "case": case,
-                "solve_status": kpis.get("Solve Status", ""),
-                "objective": kpis.get("Objective Value", ""),
-                "runtime_seconds": kpis.get("Runtime Seconds", ""),
-                "used_trucks": kpis.get("Used Trucks", ""),
-                "operating_cost": kpis.get("Operating Cost", ""),
-                "reported_makespan": kpis.get("Reported Makespan", ""),
-                "route_duration_excess": kpis.get("Route Duration Excess", ""),
-                "total_penalty": kpis.get("Total Penalty", ""),
-                "route_duration_penalty": kpis.get("Route Duration Penalty", ""),
-                "time_window_penalty": kpis.get("Time Window Penalty", ""),
-                "truck_routes": " | ".join(f"truck {int(row.truck)}: {row.route}" for row in used_trucks.itertuples(index=False)),
-                "drone_routes": selected_routes(xl, "Drone Sorties", "drone"),
-                "robot_routes": selected_routes(xl, "Robot Sorties", "robot"),
-            }
-        )
-        issues.extend(audit_solution(path, xl, case))
+        try:
+            xl = pd.ExcelFile(path)
+            kpis = read_kpis(xl)
+            truck_routes = pd.read_excel(xl, "Truck Routes")
+            used_trucks = truck_routes[truck_routes["status"].astype(str) == "used"]
+            rows.append(
+                {
+                    "case": case,
+                    "solve_status": kpis.get("Solve Status", ""),
+                    "objective": kpis.get("Objective Value", ""),
+                    "runtime_seconds": kpis.get("Runtime Seconds", ""),
+                    "used_trucks": kpis.get("Used Trucks", ""),
+                    "operating_cost": kpis.get("Operating Cost", ""),
+                    "reported_makespan": kpis.get("Reported Makespan", ""),
+                    "route_duration_excess": kpis.get("Route Duration Excess", ""),
+                    "total_penalty": kpis.get("Total Penalty", ""),
+                    "route_duration_penalty": kpis.get("Route Duration Penalty", ""),
+                    "time_window_penalty": kpis.get("Time Window Penalty", ""),
+                    "truck_routes": " | ".join(f"truck {safe_int(row.truck)}: {row.route}" for row in used_trucks.itertuples(index=False)),
+                    "drone_routes": selected_routes(xl, "Drone Sorties", "drone"),
+                    "robot_routes": selected_routes(xl, "Robot Sorties", "robot"),
+                    "error": "",
+                }
+            )
+            issues.extend(audit_solution(path, xl, case))
+        except Exception as exc:  # noqa: BLE001
+            # A corrupt or partial workbook (e.g. after an OOM kill) must not
+            # crash the whole summary; record the failure instead.
+            rows.append({"case": case, "error": f"{type(exc).__name__}: {exc}"})
 
     pd.DataFrame(rows).to_csv(RESULTS_ROOT / f"{RUN_TAG}_detailed_summary.csv", index=False)
     pd.DataFrame(issues).to_csv(RESULTS_ROOT / f"{RUN_TAG}_constraint_audit.csv", index=False)

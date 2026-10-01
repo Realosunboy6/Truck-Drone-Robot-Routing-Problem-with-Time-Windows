@@ -1,0 +1,26 @@
+{
+  "source_dataset": "TDRP-TW",
+  "selected_raw_file": "24-75.txt",
+  "number_of_customers": 24,
+  "number_of_nodes": 26,
+  "number_of_arcs": 601,
+  "demand_min": 0.1,
+  "demand_max": 49.62,
+  "demand_total": 208.18,
+  "time_window_open_min": 0.33,
+  "time_window_close_max": 32.23,
+  "distance_min": 0.0,
+  "distance_max": 19.0,
+  "distance_mean": 8.369384359400998,
+  "parameter_scenario": "literature_realistic_v1",
+  "assumptions": [
+    "Canonical end depot n+1 duplicates raw depot 0.",
+    "Robot layer uses the same benchmark distance matrix because TDRP-TW coordinates are unavailable.",
+    "Realistic v1 hardware parameters applied (see parameter_sources): drone 80 km/h / 5 kg / 40 km sortie, robot 6 km/h / 10 kg / 12 km sortie.",
+    "T_max is the per-instance depot close time, so route-duration penalties only trigger on genuine horizon violations."
+  ],
+  "warnings": [
+    "This is a truck-drone benchmark converted to a truck-drone-robot experiment.",
+    "Robot movement is a benchmark-distance surrogate, not a sidewalk-network shortest path. Use scripts/build_real_world_instance.py for OSM pedestrian-network robot data."
+  ]
+}

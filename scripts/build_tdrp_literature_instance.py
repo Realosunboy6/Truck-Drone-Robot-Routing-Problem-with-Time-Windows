@@ -57,6 +57,55 @@ LITERATURE_FIELDS = {
     "parameter_source_arxiv": "2505.23584v1",
 }
 
+# Realistic v1 platform parameters. Same cost structure as the VRP-DR paper,
+# but physical platform parameters replaced with hardware/literature values so
+# the instances describe real equipment. Distances are km, times are hours,
+# speeds km/h, payloads kg.
+REALISTIC_FIELDS = {
+    "truck_speed": 45.0,
+    "drone_speed": 80.0,
+    "robot_speed": 6.0,
+    "C_w": 0.0,
+    "C_veh": 2.9,
+    "C_w_drone": 0.0,
+    "C_drone": 0.08,
+    "C_w_r": 0.0,
+    "C_rob": 0.06,
+    "truck_fixed_cost": 30.0,
+    "drone_fixed_cost": 10.0,
+    "robot_fixed_cost": 8.0,
+    "Q_d": 5.0,
+    "Q_r": 10.0,
+    "E_d": 40.0,
+    "E_r": 12.0,
+    "lambda_E_d": 1000.0,
+    "lambda_E_r": 1000.0,
+    "lambda_Q": 1000.0,
+    "lambda_T": 1000.0,
+    "lambda_W": 1000.0,
+    "parameter_scenario": "literature_realistic_v1",
+    "parameter_source": (
+        "Drone: Sacramento et al. 2019 (50 mph / 80 km/h, 30-min endurance, 5 kg payload); "
+        "Robot: Starship Gen 3 (6 km/h, 10 kg payload, ~6.4 km delivery radius) and "
+        "Ostermeier 2021 (5 km/h robot, 8 robots per truck); "
+        "Costs: Malik et al., VRP-DR, arXiv:2505.23584, Table 3"
+    ),
+}
+
+# Per-parameter provenance for the realistic scenario. Keys not listed here
+# keep the VRP-DR Table 3 source recorded in REALISTIC_FIELDS["parameter_source"].
+REALISTIC_PARAMETER_SOURCES = {
+    "truck_speed": "Urban delivery truck cruise speed, literature standard (35-45 km/h).",
+    "drone_speed": "Sacramento et al. 2019: 50 mph (80 km/h) delivery drone.",
+    "robot_speed": "Starship Gen 3 delivery robot: 6 km/h max.",
+    "Q_d": "Sacramento et al. 2019: 5 kg drone payload.",
+    "Q_r": "Starship Gen 3: 10 kg payload.",
+    "E_d": "30-min endurance at 80 km/h => 40 km max sortie distance (Sacramento et al. 2019).",
+    "E_r": "Starship ~6.4 km delivery radius => ~12 km max sortie distance at 6 km/h (~2 h).",
+    "T_max": "Per-instance depot close time from the raw TDRP-TW file (index 0 of the close-time vector), "
+             "so the route-duration limit equals the instance horizon instead of a flat 10 h.",
+}
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -129,9 +178,24 @@ def parse_raw_instance(raw_path: Path) -> tuple[dict, list[float], list[float], 
     return params, demand, service, open_time, close_time, raw_matrix
 
 
-def build_instance(raw_path: Path, out_dir: Path) -> None:
+def build_instance(raw_path: Path, out_dir: Path, scenario: str = "realistic") -> None:
     params, demand, service, open_time, close_time, raw_matrix = parse_raw_instance(raw_path)
-    params.update(LITERATURE_FIELDS)
+    if scenario == "realistic":
+        raw_t_max = params.get("T_max")
+        params.update(REALISTIC_FIELDS)
+        params["parameter_sources"] = dict(REALISTIC_PARAMETER_SOURCES)
+        # Route-duration limit = this instance's own horizon (depot close time),
+        # not the flat 10 h from the raw header. With lambda_T = 1000, a flat
+        # T_max shorter than the latest customer window makes the penalty
+        # unavoidable and lets it dominate the objective (~97% in the v0 runs).
+        depot_close = float(close_time[0])
+        params["T_max"] = depot_close
+        params["T_max_source"] = (
+            f"depot close time from raw file {raw_path.name} "
+            f"(replaces raw header T_max={raw_t_max})"
+        )
+    else:
+        params.update(LITERATURE_FIELDS)
     params["NUM_ROBOTS"] = int(params["NUM_CUSTOMERS"]) + int(params["NUM_TRUCKS"])
     params["ROBOTS_CARRIED_AT_DEPOT"] = 1
     params["MAX_ROBOTS_PER_TRUCK"] = 2
@@ -195,15 +259,30 @@ def build_instance(raw_path: Path, out_dir: Path) -> None:
 
     params["NUM_NODES"] = size
     params["NUM_ARCS"] = len(arcs)
-    params["assumptions"] = [
-        "Canonical end depot n+1 duplicates raw depot 0.",
-        "Robot layer uses the same benchmark distance matrix because TDRP-TW coordinates are unavailable.",
-        "Literature platform speeds, costs, capacities, and endurance values are applied for this experiment.",
-    ]
-    params["warnings"] = [
-        "This is a truck-drone benchmark converted to a truck-drone-robot experiment.",
-        "Robot movement is a benchmark-distance surrogate, not a sidewalk-network shortest path.",
-    ]
+    if scenario == "realistic":
+        params["assumptions"] = [
+            "Canonical end depot n+1 duplicates raw depot 0.",
+            "Robot layer uses the same benchmark distance matrix because TDRP-TW coordinates are unavailable.",
+            "Realistic v1 hardware parameters applied (see parameter_sources): "
+            "drone 80 km/h / 5 kg / 40 km sortie, robot 6 km/h / 10 kg / 12 km sortie.",
+            "T_max is the per-instance depot close time, so route-duration penalties "
+            "only trigger on genuine horizon violations.",
+        ]
+        params["warnings"] = [
+            "This is a truck-drone benchmark converted to a truck-drone-robot experiment.",
+            "Robot movement is a benchmark-distance surrogate, not a sidewalk-network shortest path. "
+            "Use scripts/build_real_world_instance.py for OSM pedestrian-network robot data.",
+        ]
+    else:
+        params["assumptions"] = [
+            "Canonical end depot n+1 duplicates raw depot 0.",
+            "Robot layer uses the same benchmark distance matrix because TDRP-TW coordinates are unavailable.",
+            "Literature platform speeds, costs, capacities, and endurance values are applied for this experiment.",
+        ]
+        params["warnings"] = [
+            "This is a truck-drone benchmark converted to a truck-drone-robot experiment.",
+            "Robot movement is a benchmark-distance surrogate, not a sidewalk-network shortest path.",
+        ]
 
     write_csv(out_dir / "nodes.csv", nodes, ["node_id", "node_type", "x", "y"])
     write_csv(
@@ -248,9 +327,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Build one canonical literature-parameter instance from a raw TDRP-TW small/medium file.")
     parser.add_argument("--raw-file", required=True, type=Path)
     parser.add_argument("--out-dir", required=True, type=Path)
+    parser.add_argument(
+        "--scenario",
+        choices=["literature", "realistic"],
+        default="realistic",
+        help="literature: original VRP-DR Table 3 parameters; realistic: hardware-based params + per-instance T_max (default).",
+    )
     args = parser.parse_args()
-    build_instance(args.raw_file, args.out_dir)
-    print(f"Built {args.out_dir}")
+    build_instance(args.raw_file, args.out_dir, scenario=args.scenario)
+    print(f"Built {args.out_dir} (scenario={args.scenario})")
     return 0
 
 
