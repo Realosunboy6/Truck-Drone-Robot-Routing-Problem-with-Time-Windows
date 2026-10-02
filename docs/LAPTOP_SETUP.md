@@ -63,7 +63,9 @@ DRT_TIME_LIMIT_SECONDS=600 \
 python model/run_with_pulp.py
 ```
 
-Expected: optimal, objective **296.8**, one truck, zero penalties.
+Expected: feasible best incumbent, objective **296.8** (optimality not proven within
+the 600 s budget — the workbook's "Solve Status" line is the truthful record; the
+model-notes file's "optimal" label is a PuLP status quirk), one truck, zero penalties.
 
 ## 5. Cut your own pilot slices
 
