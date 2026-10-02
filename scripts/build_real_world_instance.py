@@ -90,12 +90,20 @@ HEAVY_PARCEL_MAX_KG = 20.0
 #   - truck: OSRM public demo server, table service, driving profile
 #            (real OSM road-network shortest paths)
 #   - robot: FOSSGIS Valhalla instance, sources_to_targets, pedestrian costing
-#            (real OSM pedestrian-network shortest paths)
+#            (valhalla1.openstreetmap.de) -- or, for large instances, the
+#            FOSSGIS OSRM foot-profile table service (routing.openstreetmap.de),
+#            which answers 50x50 blocks reliably where Valhalla drops connections
 #   - drone: haversine great-circle distance (unrestricted airspace)
 OSRM_TABLE_URL = "https://router.project-osrm.org/table/v1/driving"
+OSRM_FOOT_TABLE_URL = "https://routing.openstreetmap.de/routed-foot/table/v1/driving"
 VALHALLA_MATRIX_URL = "https://valhalla1.openstreetmap.de/sources_to_targets"
-OSRM_BLOCK = 50       # coordinates per OSRM table request (server cap is 100)
-VALHALLA_BLOCK = 10   # coordinates per Valhalla matrix request (pairs per request <= 100)
+OSRM_BLOCK = 100      # coordinates per OSRM driving-table request (server cap is 100; 100x100 tested OK)
+FOOT_BLOCK = 50       # coordinates per OSRM foot-table request (100x100 responses get truncated ~80KB)
+VALHALLA_BLOCK = 10   # coordinates per Valhalla matrix request (pairs per request <= 100;
+                      # the public server drops larger requests, so keep this conservative)
+VALHALLA_DELAY = 0.25  # politeness pause (s) between Valhalla block requests
+SNAP_COLLIDE_KM = 0.05  # snapped points closer than this are resampled (degenerate pairs)
+OSRM_REQUEST_DELAY = 1.0  # politeness pause (s) between OSRM table block requests
 ENGINE_RETRIES = 8
 ENGINE_TIMEOUT = 120
 
@@ -169,39 +177,166 @@ def _http_post_json(url: str, payload: dict, timeout: int = ENGINE_TIMEOUT) -> d
     raise RuntimeError(f"POST {url} failed after {ENGINE_RETRIES} attempts: {last}")
 
 
-def osrm_driving_matrix(latlon: list[tuple[float, float]]
-                        ) -> tuple[list[list[float | None]], list[tuple[float, float]]]:
-    """Truck road-network distances (km) via the OSRM table service (driving).
+def _osrm_table_request(table_url: str,
+                        src_latlon: list[tuple[float, float]],
+                        dst_latlon: list[tuple[float, float]],
+                        label: str) -> dict:
+    """One OSRM table request: distances (m) for sources x destinations."""
+    coords = list(src_latlon) + list(dst_latlon)
+    coord_str = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in coords)
+    src = ";".join(str(k) for k in range(len(src_latlon)))
+    dst = ";".join(str(len(src_latlon) + k) for k in range(len(dst_latlon)))
+    url = (f"{table_url}/{coord_str}"
+           f"?annotations=distance&sources={src}&destinations={dst}")
+    doc = _http_get_json(url)
+    if doc.get("code") != "Ok":
+        raise RuntimeError(f"OSRM {label} table error: {doc.get('code')}: {doc.get('message')}")
+    return doc
+
+
+def _checkpoint_path(out_dir: Path | None, label: str) -> Path | None:
+    return out_dir / f".checkpoint_{label}.json" if out_dir is not None else None
+
+
+def _load_checkpoint(path: Path, table_url: str,
+                     latlon: list[tuple[float, float]]) -> dict:
+    """Return saved blocks dict if the checkpoint matches these exact points."""
+    try:
+        saved = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    want = [[round(la, 6), round(lo, 6)] for la, lo in latlon]
+    if saved.get("url") == table_url and saved.get("points") == want:
+        return saved.get("blocks", {})
+    return {}
+
+
+def _save_checkpoint(path: Path, table_url: str,
+                     latlon: list[tuple[float, float]], blocks: dict) -> None:
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({
+        "url": table_url,
+        "points": [[round(la, 6), round(lo, 6)] for la, lo in latlon],
+        "blocks": blocks,
+    }), encoding="utf-8")
+    tmp.replace(path)
+
+
+def osrm_table_matrix(latlon: list[tuple[float, float]],
+                      table_url: str,
+                      block: int,
+                      label: str,
+                      out_dir: Path | None = None,
+                      ) -> tuple[list[list[float | None]], list[tuple[float, float]]]:
+    """Distance matrix (km) via an OSRM table service.
 
     Returns (dist_km, snapped_latlon); entries are None when the engine
-    cannot route between a pair.
+    cannot route between a pair. Completed blocks are checkpointed to
+    out_dir so an interrupted run resumes instead of restarting.
     """
+    import time
     n = len(latlon)
     dist_km: list[list[float | None]] = [[None] * n for _ in range(n)]
     snapped: list[tuple[float, float] | None] = [None] * n
-    for a in range(0, n, OSRM_BLOCK):
-        for b in range(0, n, OSRM_BLOCK):
-            a_idx = list(range(a, min(a + OSRM_BLOCK, n)))
-            b_idx = list(range(b, min(b + OSRM_BLOCK, n)))
-            coords = [latlon[i] for i in a_idx] + [latlon[i] for i in b_idx]
-            coord_str = ";".join(f"{lon:.6f},{lat:.6f}" for lat, lon in coords)
-            src = ";".join(str(k) for k in range(len(a_idx)))
-            dst = ";".join(str(len(a_idx) + k) for k in range(len(b_idx)))
-            url = (f"{OSRM_TABLE_URL}/{coord_str}"
-                   f"?annotations=distance&sources={src}&destinations={dst}")
-            doc = _http_get_json(url)
-            if doc.get("code") != "Ok":
-                raise RuntimeError(f"OSRM table error: {doc.get('code')}: {doc.get('message')}")
-            table = doc.get("distances") or doc["durations"]
+    ckpt = _checkpoint_path(out_dir, label)
+    blocks: dict[str, dict] = _load_checkpoint(ckpt, table_url, latlon) if ckpt else {}
+    if blocks:
+        print(f"  {label}: resuming from checkpoint ({len(blocks)} blocks done)")
+    total = ((n + block - 1) // block) ** 2
+    for a in range(0, n, block):
+        for b in range(0, n, block):
+            key = f"{a}_{b}"
+            a_idx = list(range(a, min(a + block, n)))
+            b_idx = list(range(b, min(b + block, n)))
+            if key in blocks:
+                table = blocks[key]["table"]
+                dest = blocks[key]["destinations"]
+            else:
+                doc = _osrm_table_request(
+                    table_url, [latlon[i] for i in a_idx], [latlon[i] for i in b_idx], label)
+                table = doc.get("distances") or doc["durations"]
+                dest = doc["destinations"]
+                blocks[key] = {"table": table, "destinations": dest}
+                if ckpt:
+                    _save_checkpoint(ckpt, table_url, latlon, blocks)
+                time.sleep(OSRM_REQUEST_DELAY)
             for ri, gi in enumerate(a_idx):
                 for cj, gj in enumerate(b_idx):
                     val = table[ri][cj]
                     dist_km[gi][gj] = (val / 1000.0) if val is not None else None
             for k, gj in enumerate(b_idx):
-                loc = doc["destinations"][k]["location"]  # [lon, lat], snapped
+                loc = dest[k]["location"]  # [lon, lat], snapped
                 snapped[gj] = (loc[1], loc[0])
+            if len(blocks) % 25 == 0 or len(blocks) == total:
+                print(f"  {label} matrix: {len(blocks)}/{total} blocks")
     assert all(s is not None for s in snapped)
+    if ckpt and ckpt.exists():
+        ckpt.unlink()
     return dist_km, [s for s in snapped if s is not None]
+
+
+def osrm_table_refresh(latlon: list[tuple[float, float]],
+                       table_url: str,
+                       block: int,
+                       label: str,
+                       indices: list[int],
+                       ) -> tuple[dict[int, list[float | None]], dict[int, list[float | None]]]:
+    """Refresh only the rows and columns of the given point indices.
+
+    Returns (rows, cols, snapped) with rows[i][j] = i->j and cols[i][j] = j->i
+    in km, plus snapped engine positions for every point.
+    Used after resampling points so a full matrix rebuild is unnecessary.
+    """
+    import time
+    n = len(latlon)
+    idx = sorted(set(indices))
+    rows: dict[int, list[float | None]] = {i: [None] * n for i in idx}
+    cols: dict[int, list[float | None]] = {i: [None] * n for i in idx}
+    new_snapped: dict[int, tuple[float, float]] = {}
+    # rows: sources=idx (batched), destinations=all
+    for sb in range(0, len(idx), block):
+        s_idx = idx[sb:sb + block]
+        for db in range(0, n, block):
+            d_idx = list(range(db, min(db + block, n)))
+            doc = _osrm_table_request(
+                table_url, [latlon[i] for i in s_idx], [latlon[i] for i in d_idx], label)
+            table = doc.get("distances") or doc["durations"]
+            for ri, gi in enumerate(s_idx):
+                for cj, gj in enumerate(d_idx):
+                    val = table[ri][cj]
+                    rows[gi][gj] = (val / 1000.0) if val is not None else None
+            for cj, gj in enumerate(d_idx):
+                loc = doc["destinations"][cj]["location"]  # [lon, lat], snapped
+                new_snapped[gj] = (loc[1], loc[0])
+            time.sleep(OSRM_REQUEST_DELAY)
+    # cols: sources=all, destinations=idx (batched)
+    for sb in range(0, n, block):
+        s_idx = list(range(sb, min(sb + block, n)))
+        for db in range(0, len(idx), block):
+            d_idx = idx[db:db + block]
+            doc = _osrm_table_request(
+                table_url, [latlon[i] for i in s_idx], [latlon[i] for i in d_idx], label)
+            table = doc.get("distances") or doc["durations"]
+            for ri, gi in enumerate(s_idx):
+                for cj, gj in enumerate(d_idx):
+                    val = table[ri][cj]
+                    cols[gj][gi] = (val / 1000.0) if val is not None else None
+            time.sleep(OSRM_REQUEST_DELAY)
+    return rows, cols, new_snapped
+
+
+def _valhalla_block(a_idx: list[int], b_idx: list[int],
+                    latlon: list[tuple[float, float]]) -> dict:
+    """One Valhalla sources_to_targets request for the given index blocks."""
+    import time
+    payload = {
+        "sources": [{"lat": latlon[i][0], "lon": latlon[i][1]} for i in a_idx],
+        "targets": [{"lat": latlon[i][0], "lon": latlon[i][1]} for i in b_idx],
+        "costing": "pedestrian",
+    }
+    doc = _http_post_json(VALHALLA_MATRIX_URL, payload)
+    time.sleep(VALHALLA_DELAY)
+    return doc
 
 
 def valhalla_pedestrian_matrix(latlon: list[tuple[float, float]]
@@ -214,16 +349,13 @@ def valhalla_pedestrian_matrix(latlon: list[tuple[float, float]]
     n = len(latlon)
     dist_km: list[list[float | None]] = [[None] * n for _ in range(n)]
     snapped: list[tuple[float, float] | None] = [None] * n
+    total = (n + VALHALLA_BLOCK - 1) // VALHALLA_BLOCK
+    done = 0
     for a in range(0, n, VALHALLA_BLOCK):
         for b in range(0, n, VALHALLA_BLOCK):
             a_idx = list(range(a, min(a + VALHALLA_BLOCK, n)))
             b_idx = list(range(b, min(b + VALHALLA_BLOCK, n)))
-            payload = {
-                "sources": [{"lat": latlon[i][0], "lon": latlon[i][1]} for i in a_idx],
-                "targets": [{"lat": latlon[i][0], "lon": latlon[i][1]} for i in b_idx],
-                "costing": "pedestrian",
-            }
-            doc = _http_post_json(VALHALLA_MATRIX_URL, payload)
+            doc = _valhalla_block(a_idx, b_idx, latlon)
             rows = doc["sources_to_targets"]
             for ri, gi in enumerate(a_idx):
                 for cj, gj in enumerate(b_idx):
@@ -232,8 +364,36 @@ def valhalla_pedestrian_matrix(latlon: list[tuple[float, float]]
             for k, gj in enumerate(b_idx):
                 t = doc["targets"][k]
                 snapped[gj] = (t["lat"], t["lon"])
+            done += 1
+            if done % 50 == 0 or done == total * total:
+                print(f"  valhalla matrix: {done}/{total * total} blocks")
     assert all(s is not None for s in snapped)
     return dist_km, [s for s in snapped if s is not None]
+
+
+def valhalla_point_rowcol(latlon: list[tuple[float, float]], idx: int
+                          ) -> tuple[list[float | None], list[float | None]]:
+    """Pedestrian distances for a single point: row[j] = idx->j, col[j] = j->idx.
+
+    Used to refresh one resampled point without recomputing the whole matrix.
+    """
+    n = len(latlon)
+    row: list[float | None] = [None] * n
+    col: list[float | None] = [None] * n
+    for b in range(0, n, VALHALLA_BLOCK):
+        jdx = list(range(b, min(b + VALHALLA_BLOCK, n)))
+        doc = _valhalla_block([idx], jdx, latlon)
+        cells = doc["sources_to_targets"][0]
+        for cj, gj in enumerate(jdx):
+            row[gj] = cells[cj]["distance"] if cells[cj]["distance"] is not None else None
+    for b in range(0, n, VALHALLA_BLOCK):
+        jdx = list(range(b, min(b + VALHALLA_BLOCK, n)))
+        doc = _valhalla_block(jdx, [idx], latlon)
+        rows = doc["sources_to_targets"]
+        for ri, gj in enumerate(jdx):
+            cell = rows[ri][0]
+            col[gj] = cell["distance"] if cell["distance"] is not None else None
+    return row, col
 
 
 def _geocode_bbox(place: str) -> tuple[float, float, float, float]:
@@ -257,8 +417,13 @@ def build_instance(
     seed: int,
     out_dir: Path,
     depot_latlon: tuple[float, float] | None = None,
+    min_sep_km: float = 0.15,
+    robot_engine: str = "valhalla",
+    osm_pbf: str | Path | None = None,
 ) -> None:
     rng = random.Random(seed)
+    if robot_engine not in ("valhalla", "osrm-foot", "local"):
+        raise ValueError(f"unknown robot_engine {robot_engine!r}")
 
     if bbox is not None:
         north, south, east, west = bbox
@@ -271,7 +436,6 @@ def build_instance(
     # Sample customer points spread across the bbox (min separation avoids
     # clusters of near-duplicate delivery points). The routing engines snap
     # each point to the road/pedestrian networks when the matrices are built.
-    min_sep_km = 0.15
     cust_latlon: list[tuple[float, float]] = []
     attempts = 0
     while len(cust_latlon) < n_customers and attempts < 20000:
@@ -292,29 +456,104 @@ def build_instance(
                  sum(lo for _, lo in cust_latlon) / n_customers)
 
     points: list[tuple[float, float]] = [depot] + cust_latlon  # index 0 = depot
+    out_dir.mkdir(parents=True, exist_ok=True)  # early: matrix checkpoints live here
+
+    # Offline pedestrian engine: parse the local OSM walk network once and
+    # reuse it for every round (no server, no throttling, fully deterministic).
+    local_engine = None
+    if robot_engine == "local":
+        if osm_pbf is None:
+            raise ValueError("--robot-engine local requires --osm-pbf <path-to-.osm.pbf>")
+        try:
+            from local_pedestrian import LocalPedestrianEngine
+        except ImportError:  # invoked as scripts.build_real_world_instance
+            from scripts.local_pedestrian import LocalPedestrianEngine
+        print("parsing local OSM walk network (one-time)...", flush=True)
+        local_engine = LocalPedestrianEngine(
+            osm_pbf, (south - 0.03, north + 0.03, west - 0.03, east + 0.03))
+        print(f"  walk network ready: {local_engine.n_nodes} nodes", flush=True)
 
     # Route every pair on the real networks. Sampled points the engines cannot
     # route are replaced (bounded rounds); a depot that cannot route is fatal.
+    # The pedestrian matrix is the expensive step, so after round 0 only the
+    # rows/cols of resampled points are refreshed; the truck matrix is cheap
+    # enough to rebuild fully each round.
     def _rowcol_ok(m: list[list[float | None]], i: int) -> bool:
         n_ = len(m)
         return all(m[i][j] is not None and m[j][i] is not None for j in range(n_))
 
+    robot_mat: list[list[float | None]] = []
+    bad: list[int] = []
+
+    def _robot_full_matrix(pts: list[tuple[float, float]], out: Path | None
+                           ) -> tuple[list[list[float | None]], list[tuple[float, float]]]:
+        if robot_engine == "osrm-foot":
+            return osrm_table_matrix(pts, OSRM_FOOT_TABLE_URL, FOOT_BLOCK, "foot", out)
+        if robot_engine == "local":
+            return local_engine.matrix(pts)
+        return valhalla_pedestrian_matrix(pts)
+
+    def _refresh_osrm(mat: list[list[float | None]], table_url: str, block: int,
+                      label: str, indices: list[int]) -> None:
+        rows, cols, new_snapped = osrm_table_refresh(points, table_url, block, label, indices)
+        for i in indices:
+            mat[i] = rows[i]
+            for j in range(len(points)):
+                mat[j][i] = cols[i][j]
+        for gj, pos in new_snapped.items():
+            snapped[gj] = pos
+
     for _round in range(5):
-        truck_mat, snapped = osrm_driving_matrix(points)
-        robot_mat, _snapped_walk = valhalla_pedestrian_matrix(points)
+        if _round == 0:
+            print("round 1/5: truck matrix (checkpointed)...")
+            truck_mat, snapped = osrm_table_matrix(
+                points, OSRM_TABLE_URL, OSRM_BLOCK, "driving", out_dir)
+            print(f"round 1/5: full pedestrian matrix ({robot_engine}, checkpointed)...")
+            robot_mat, _snapped_walk = _robot_full_matrix(points, out_dir)
+        else:
+            print(f"round {_round + 1}/5: refreshing {len(bad)} resampled point(s)...")
+            _refresh_osrm(truck_mat, OSRM_TABLE_URL, OSRM_BLOCK, "driving", bad)
+            if robot_engine == "valhalla":
+                for i in bad:
+                    row, col = valhalla_point_rowcol(points, i)
+                    for j in range(len(points)):
+                        robot_mat[i][j] = row[j]
+                        robot_mat[j][i] = col[j]
+            elif robot_engine == "local":
+                # local engine: full recompute is cheap (in-memory Dijkstra)
+                robot_mat, _snapped_walk = local_engine.matrix(points)
+                for gj, pos in enumerate(_snapped_walk):
+                    snapped[gj] = pos
+            else:
+                _refresh_osrm(robot_mat, OSRM_FOOT_TABLE_URL, FOOT_BLOCK, "foot", bad)
         if not _rowcol_ok(truck_mat, 0) or not _rowcol_ok(robot_mat, 0):
             raise RuntimeError("depot location is not routable on the road/pedestrian network")
-        bad = [i for i in range(1, len(points))
-               if not (_rowcol_ok(truck_mat, i) and _rowcol_ok(robot_mat, i))]
+        bad_routing = [i for i in range(1, len(points))
+                       if not (_rowcol_ok(truck_mat, i) and _rowcol_ok(robot_mat, i))]
+        # Snapped de-collision: engines can snap distinct sampled points onto
+        # the same network location (zero-distance pairs). Treat those like
+        # unroutable points, with a wider exclusion so they cannot collapse
+        # onto the same spot again (snap displacement is typically < 100 m).
+        seen: list[tuple[float, float]] = [snapped[0]]
+        bad_collide: list[int] = []
+        for k in range(1, len(points)):
+            if any(haversine_km(snapped[k][0], snapped[k][1], la, lo) < SNAP_COLLIDE_KM
+                   for la, lo in seen):
+                bad_collide.append(k)
+            else:
+                seen.append(snapped[k])
+        bad = sorted(set(bad_routing) | set(bad_collide))
         if not bad:
             break
-        print(f"resampling {len(bad)} unroutable customer point(s)...")
+        print(f"resampling {len(bad)} point(s) "
+              f"({len(bad_routing)} unroutable, {len(bad_collide)} snapped-collapsed)...")
         for i in bad:
+            exclusion = max(min_sep_km, 0.25) if i in bad_collide else min_sep_km
             for _ in range(20000):
                 lat = rng.uniform(south, north)
                 lon = rng.uniform(west, east)
                 others = [p for k, p in enumerate(points) if k != i]
-                if all(haversine_km(lat, lon, la, lo) >= min_sep_km for la, lo in others):
+                if all(haversine_km(lat, lon, la, lo) >= exclusion for la, lo in others):
                     points[i] = (lat, lon)
                     break
             else:
@@ -355,6 +594,23 @@ def build_instance(
     size = n + 2
     node_ids = list(range(size))
 
+    if robot_engine == "osrm-foot":
+        robot_provenance = ("OSRM table service (foot profile) on the OSM walk network, "
+                            "via routing.openstreetmap.de (FOSSGIS)")
+        robot_assumption = ("Robot travel: OSRM foot-profile shortest-path distances on the OSM "
+                            "walk network at 6 km/h.")
+    elif robot_engine == "local":
+        robot_provenance = (f"local OSM walk network parsed from {Path(osm_pbf).name} "
+                            "(Geofabrik Illinois extract) with pyrosm; all-pairs shortest "
+                            "paths computed in-process (Dijkstra on the undirected walk graph)")
+        robot_assumption = ("Robot travel: shortest-path pedestrian distances on the OSM "
+                            "walk network at 6 km/h, computed fully offline.")
+    else:
+        robot_provenance = ("Valhalla sources_to_targets (pedestrian costing) on the OSM walk "
+                            "network, via valhalla1.openstreetmap.de (FOSSGIS)")
+        robot_assumption = ("Robot travel: Valhalla shortest-path pedestrian distances on the OSM "
+                            "walk network at 6 km/h.")
+
     params = dict(REALISTIC_PARAMS)
     params.update(
         {
@@ -363,8 +619,10 @@ def build_instance(
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "generator": "scripts/build_real_world_instance.py",
             "generator_seed": seed,
+            "robot_engine": robot_engine,
+            "osm_pbf": Path(osm_pbf).name if osm_pbf else None,
             "NUM_CUSTOMERS": n,
-            "NUM_TRUCKS": 2 if n <= 12 else 3,
+            "NUM_TRUCKS": max(2 if n <= 12 else 3, math.ceil(n / 30)),
             "NUM_DRONES": n,
             "DRONES_CARRIED_AT_DEPOT": 1,
             "MAX_DRONES_PER_TRUCK": 2,
@@ -380,8 +638,7 @@ def build_instance(
                 "Costs: Malik et al., VRP-DR, arXiv:2505.23584, Table 3; "
                 f"Truck road distances: OSRM table service (driving profile) on the OSM road network, "
                 f"via the router.project-osrm.org public demo server ({place_label}); "
-                f"robot pedestrian distances: Valhalla sources_to_targets (pedestrian costing) on the OSM "
-                f"walk network, via valhalla1.openstreetmap.de (FOSSGIS); "
+                f"robot pedestrian distances: {robot_provenance}; "
                 "queried " + datetime.now(timezone.utc).date().isoformat()
             ),
             "demand_rule": (
@@ -394,15 +651,22 @@ def build_instance(
             ),
             "assumptions": [
                 "Truck travel: OSRM shortest-path driving distances on the OSM road network at a constant 45 km/h.",
-                "Robot travel: Valhalla shortest-path pedestrian distances on the OSM walk network at 6 km/h.",
+                robot_assumption,
                 "Drone travel: haversine great-circle distance at 80 km/h (unrestricted airspace).",
                 "Canonical end depot n+1 duplicates depot 0.",
             ],
             "warnings": [
                 "Truck speed is constant; OSM maxspeed-based travel times are a future refinement.",
                 "Drone flight is straight-line; no-fly zones and wind are not modeled.",
-                "Routing data comes from public demo servers (OSRM, Valhalla); for publication-grade "
-                "instances use a self-hosted engine or a local OSM extract.",
+                (
+                    "Truck road distances come from the public OSRM demo server "
+                    "(router.project-osrm.org); for publication-grade instances use a "
+                    "self-hosted OSRM engine. Robot pedestrian distances are computed "
+                    "fully offline from a local OSM extract."
+                    if robot_engine == "local" else
+                    "Routing data comes from public demo servers (OSRM, Valhalla); for publication-grade "
+                    "instances use a self-hosted engine or a local OSM extract."
+                ),
             ],
         }
     )
@@ -495,7 +759,7 @@ def build_instance(
         "time_window_open_min": min(w[0] for w in windows),
         "time_window_close_max": max(w[1] for w in windows),
         "truck_routing_source": "OSRM table v1/driving via router.project-osrm.org (OSM road network)",
-        "robot_routing_source": "Valhalla sources_to_targets, costing=pedestrian via valhalla1.openstreetmap.de (OSM walk network)",
+        "robot_routing_source": robot_provenance,
         "drone_distance_source": "haversine great-circle on WGS84",
         "depot_lat": depot_lat,
         "depot_lon": depot_lon,
@@ -516,12 +780,21 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--depot-latlon", default=None, help="lat,lon of depot (default: customer centroid)")
+    parser.add_argument("--min-sep-km", type=float, default=0.15,
+                        help="minimum separation between sampled customer points (default 0.15)")
+    parser.add_argument("--robot-engine", choices=["valhalla", "osrm-foot", "local"], default="valhalla",
+                        help="pedestrian routing engine for robot matrices "
+                             "(local = fully offline from a .osm.pbf via --osm-pbf)")
+    parser.add_argument("--osm-pbf", default=None,
+                        help="path to a .osm.pbf extract (required for --robot-engine local)")
     args = parser.parse_args()
     if args.place is None and args.bbox is None:
         parser.error("one of --place or --bbox is required")
     bbox = tuple(float(v) for v in args.bbox.split(",")) if args.bbox else None
     depot_latlon = tuple(float(v) for v in args.depot_latlon.split(",")) if args.depot_latlon else None
-    build_instance(args.place, bbox, args.n_customers, args.seed, args.out_dir, depot_latlon)
+    build_instance(args.place, bbox, args.n_customers, args.seed, args.out_dir, depot_latlon,
+                   min_sep_km=args.min_sep_km, robot_engine=args.robot_engine,
+                   osm_pbf=args.osm_pbf)
     return 0
 
 

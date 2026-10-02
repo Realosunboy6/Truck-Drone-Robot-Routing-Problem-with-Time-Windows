@@ -1,0 +1,30 @@
+{
+  "source_dataset": "OSM real-world",
+  "source_place": "bbox(41.96,41.9,-88.715,-88.79)",
+  "generator_seed": 7,
+  "number_of_customers": 8,
+  "number_of_nodes": 10,
+  "number_of_arcs": 73,
+  "demand_min": 0.52,
+  "demand_max": 19.85,
+  "demand_total": 15.23,
+  "time_window_open_min": 0.01,
+  "time_window_close_max": 7.99,
+  "truck_routing_source": "OSRM table v1/driving via router.project-osrm.org (OSM road network)",
+  "robot_routing_source": "local OSM walk network parsed from illinois-260930.osm.pbf (Geofabrik Illinois extract) with pyrosm; all-pairs shortest paths computed in-process (Dijkstra on the undirected walk graph)",
+  "drone_distance_source": "haversine great-circle on WGS84",
+  "depot_lat": 41.9279283,
+  "depot_lon": -88.7525392,
+  "parameter_scenario": "realworld_osm_v1",
+  "assumptions": [
+    "Truck travel: OSRM shortest-path driving distances on the OSM road network at a constant 45 km/h.",
+    "Robot travel: shortest-path pedestrian distances on the OSM walk network at 6 km/h, computed fully offline.",
+    "Drone travel: haversine great-circle distance at 80 km/h (unrestricted airspace).",
+    "Canonical end depot n+1 duplicates depot 0."
+  ],
+  "warnings": [
+    "Truck speed is constant; OSM maxspeed-based travel times are a future refinement.",
+    "Drone flight is straight-line; no-fly zones and wind are not modeled.",
+    "Truck road distances come from the public OSRM demo server (router.project-osrm.org); for publication-grade instances use a self-hosted OSRM engine. Robot pedestrian distances are computed fully offline from a local OSM extract (Geofabrik Illinois illinois-260930.osm.pbf, pyrosm walking network, in-process Dijkstra)."
+  ]
+}

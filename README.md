@@ -236,6 +236,29 @@ python scripts/build_real_world_instance.py \
 
 (`--bbox north,south,east,west` and `--depot-latlon lat,lon` are also supported.)
 
+### 300-customer DeKalb instance (offline pedestrian routing)
+
+`data_processed/realworld_dekalb_il_300` covers the whole of DeKalb, IL (300 customers,
+302 nodes, 90,301 arcs, 10 trucks, 8 h horizon). At this scale both public pedestrian
+routers failed (Valhalla dropped connections; the OSRM foot profile throttled the build),
+so robot distances are computed **fully offline** by `scripts/local_pedestrian.py`
+(`--robot-engine local --osm-pbf`): it parses a local Geofabrik Illinois PBF extract with
+pyrosm, keeps the largest connected walk component, and runs in-process Dijkstra for
+all-pairs pedestrian shortest paths. Truck matrices still use the public OSRM driving
+server. The 360 MB PBF is local infrastructure and is intentionally not committed.
+Reproduce with:
+
+```bash
+python -u scripts/build_real_world_instance.py \
+    --bbox "41.960,41.900,-88.715,-88.790" \
+    --n-customers 300 --seed 7 --min-sep-km 0.10 \
+    --robot-engine local --osm-pbf /path/to/illinois-YYMMDD.osm.pbf \
+    --out-dir data_processed/realworld_dekalb_il_300
+```
+
+`data_processed/realworld_dekalb_il_300_slice6` (and `_slice8`) are small pilots cut from
+the 300 for solver experiments — see `scripts/slice_instance.py` and `docs/LAPTOP_SETUP.md`.
+
 ## Benchmark Data Attribution
 
 The raw benchmark instances in `data_raw/tdrp_tw` come from the TDRP-TW dataset:
