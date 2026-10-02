@@ -26,6 +26,35 @@ NOTES_PATH = RESULTS_DIR / f"{INSTANCE_TAG}_ordered_sorties_{RUN_TAG}_model_note
 INFEASIBILITY_NOTES_PATH = RESULTS_DIR / f"{INSTANCE_TAG}_ordered_sorties_{RUN_TAG}_infeasibility_notes.md"
 MAX_CUSTOMERS_PER_SORTIE = int(os.environ.get("DRT_MAX_CUSTOMERS_PER_SORTIE", "4"))
 TOP_SORTIES_PER_TRUCK_LEG = int(os.environ.get("DRT_TOP_SORTIES_PER_TRUCK_LEG", "25"))
+# VRP-DR adoption: relaxed multi-trip model with en-route charging.
+# Q_MAX_TRIPS bounds trips per physical platform (1 = legacy single-trip).
+Q_MAX_TRIPS = int(os.environ.get("DRT_Q_MAX_TRIPS", "1"))
+# ALPHA blends operating cost vs makespan: P = ALPHA*OpCost + (1-ALPHA)*Gamma + penalties.
+ALPHA_COST = float(os.environ.get("DRT_ALPHA", "1.0"))
+# Relaxed-objective penalty prices (friend's Eq.12 style). Strict model = +inf.
+LAMBDA_Q_DEFAULT = float(os.environ.get("DRT_LAMBDA_Q", "15.0"))
+LAMBDA_E_DRONE_DEFAULT = float(os.environ.get("DRT_LAMBDA_E_DRONE", "0.2"))
+LAMBDA_E_ROBOT_DEFAULT = float(os.environ.get("DRT_LAMBDA_E_ROBOT", "0.2"))
+# Usable battery capacities (Wh). Drone value reproduces the 40 km Sacramento
+# range at 45 Wh/km and 90% DoD; robot value is the Starship Gen 3 spec.
+DRONE_BATTERY_WH = float(os.environ.get("DRT_DRONE_BATTERY_WH", "2000.0"))
+ROBOT_BATTERY_WH = float(os.environ.get("DRT_ROBOT_BATTERY_WH", "1260.0"))
+# Linear energy coefficients: e(s) = (A + B*payload_kg) * distance_km (Wh).
+DRONE_ENERGY_A = float(os.environ.get("DRT_DRONE_ENERGY_A", "30.0"))
+DRONE_ENERGY_B = float(os.environ.get("DRT_DRONE_ENERGY_B", "3.0"))
+ROBOT_ENERGY_A = float(os.environ.get("DRT_ROBOT_ENERGY_A", "12.0"))
+ROBOT_ENERGY_B = float(os.environ.get("DRT_ROBOT_ENERGY_B", "0.6"))
+# En-route charging rates (W) while aboard the truck.
+DRONE_CHARGE_W = float(os.environ.get("DRT_DRONE_CHARGE_W", "1000.0"))
+ROBOT_CHARGE_W = float(os.environ.get("DRT_ROBOT_CHARGE_W", "400.0"))
+# Generation-time endurance slack: keep sorties up to SLACK x battery so the
+# lambda_E penalties have candidates to price.
+ENDURANCE_SLACK = float(os.environ.get("DRT_ENDURANCE_SLACK", "1.5"))
+# Minimum turnaround between consecutive trips of one platform (hours).
+TURNAROUND_H = float(os.environ.get("DRT_TURNAROUND_H", "0.0"))
+# Relaxed (penalized) objective on by default per the friend's Eq.12;
+# DRT_RELAXED_OBJECTIVE=0 restores the legacy strict model.
+RELAXED_OBJECTIVE = os.environ.get("DRT_RELAXED_OBJECTIVE", "1").strip().lower() in {"1", "true", "yes", "y"}
 TIME_LIMIT_SECONDS = float(os.environ.get("DRT_TIME_LIMIT_SECONDS", "1800"))
 # Truck-only baseline mode: DRT_TRUCK_ONLY=1 fixes all drone and robot
 # sortie variables to zero so the same model file can produce a truck-only baseline.
@@ -124,13 +153,15 @@ def combine_platform_sortie_selections(
     platform_col: str,
     sortie_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    launch_df = selected_rows(solution, launch_vars, ["launch_truck", platform_col, "sortie_id"])
-    recovery_df = selected_rows(solution, recovery_vars, ["recovery_truck", platform_col, "sortie_id"])
-    key_cols = [platform_col, "sortie_id"]
+    # Trip-indexed: keys are (truck, platform, trip q, sortie_id).
+    launch_df = selected_rows(solution, launch_vars, ["launch_truck", platform_col, "trip", "sortie_id"])
+    recovery_df = selected_rows(solution, recovery_vars, ["recovery_truck", platform_col, "trip", "sortie_id"])
+    key_cols = [platform_col, "trip", "sortie_id"]
     output_cols = [
         "launch_truck",
         "recovery_truck",
         platform_col,
+        "trip",
         "sortie_id",
         "value_launch",
         "value_recovery",
@@ -275,10 +306,26 @@ def generate_ordered_sorties(
     cost_matrix: dict[tuple[int, int], float],
     max_customers_per_sortie: int = MAX_CUSTOMERS_PER_SORTIE,
     top_sorties_per_truck_leg: int = TOP_SORTIES_PER_TRUCK_LEG,
+    energy_a: float = DRONE_ENERGY_A,
+    energy_b: float = DRONE_ENERGY_B,
+    battery_wh: float = DRONE_BATTERY_WH,
+    endurance_slack: float = ENDURANCE_SLACK,
+    allow_cyclic: bool = True,
+    cyclic_nodes: list[int] | None = None,
 ) -> pd.DataFrame:
     rows: list[dict] = []
     sortie_id = 1
-    for launch, recover in arcs:
+    # Cyclic sorties: extend the leg set with self-loops (i, i). A cyclic
+    # sortie launches from node i, serves its sequence, and recovers at i.
+    # Self-loops are only added at the given cyclic_nodes. The start depot is
+    # excluded: this sparse arc set has no customer->start-depot return legs,
+    # so depot-cyclic sorties cannot be priced from data.
+    legs = list(arcs)
+    if allow_cyclic:
+        nodes = sorted({u for u, _ in arcs} | {v for _, v in arcs})
+        loop_nodes = cyclic_nodes if cyclic_nodes is not None else nodes
+        legs += [(i, i) for i in loop_nodes if (i, i) not in arcs]
+    for launch, recover in legs:
         leg_rows: list[dict] = []
         candidates = [
             customer
@@ -292,8 +339,22 @@ def generate_ordered_sorties(
                 if payload > capacity + 1e-9:
                     continue
                 edges = route_edges(launch, sequence, recover)
-                duration = sum(float(time_matrix[u, v]) for u, v in edges)
-                route_distance = sum(float(distance_matrix[u, v]) for u, v in edges)
+                # Skip sequences whose legs lack data (sparse arc sets may miss
+                # a return leg, e.g. one customer->customer arc is absent here).
+                try:
+                    duration = sum(float(time_matrix[u, v]) for u, v in edges)
+                    route_distance = sum(float(distance_matrix[u, v]) for u, v in edges)
+                except KeyError:
+                    continue
+                # Energy per sortie (Wh), precomputed: the payload-dependent
+                # term makes energy the binding primitive instead of distance.
+                energy_wh = (energy_a + energy_b * payload) * route_distance
+                # Generation filter: keep the original operational range limit
+                # (distance-based endurance). The relaxed model prices energy
+                # excess beyond battery capacity via end_excess variables; the
+                # battery is oversized relative to operational range, so the
+                # distance filter remains the binding generation cut and the
+                # candidate set stays tractable.
                 if route_distance > endurance + 1e-9:
                     continue
                 leg_rows.append(
@@ -308,6 +369,7 @@ def generate_ordered_sorties(
                         "travel_distance": route_distance,
                         "duration": duration,
                         "cost": sum(cost_matrix[u, v] for u, v in edges),
+                        "energy_wh": energy_wh,
                     }
                 )
         leg_rows.sort(key=lambda row: (-row["customer_count"], row["cost"], row["duration"], row["sequence_text"]))
@@ -435,6 +497,7 @@ def audit_selected_ordered_sorties(
     service_time: dict[int, float],
     open_time: dict[int, float],
     close_time: dict[int, float],
+    truck_ready_vars: dict | None = None,
     tol: float = 1e-4,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     summary_rows: list[dict] = []
@@ -475,7 +538,10 @@ def audit_selected_ordered_sorties(
             )
 
         truck_launch_time = value_or_zero(solution, truck_arrival_vars[launch_truck, launch])
-        truck_recovery_time = value_or_zero(solution, truck_arrival_vars[recovery_truck, recovery])
+        # Recovery synchronizes with the truck's ready (departure) time dep_t,
+        # which waits for the platform; arrival time a_t would understate it.
+        ready_vars = truck_ready_vars if truck_ready_vars is not None else truck_arrival_vars
+        truck_recovery_time = value_or_zero(solution, ready_vars[recovery_truck, recovery])
 
         current_time = truck_launch_time
         total_distance = 0.0
@@ -488,6 +554,7 @@ def audit_selected_ordered_sorties(
             total_distance += distance
             total_travel += travel
             arrival_before_wait = current_time + travel
+            lateness = 0.0
             if to_node == recovery:
                 wait = 0.0
                 service = 0.0
@@ -501,11 +568,10 @@ def audit_selected_ordered_sorties(
                 total_wait += wait
                 total_service += service
                 latest = float(close_time.get(to_node, math.inf))
-                if service_start > latest + tol:
-                    raise ValueError(
-                        f"Time-window violation in {platform_label} sortie {sortie_id} "
-                        f"at node {to_node}: service_start={service_start}, latest={latest}"
-                    )
+                # Time windows are soft in the model (penalized via late_*).
+                # Record lateness instead of raising; it should match the
+                # solver's reported penalty variables.
+                lateness = max(0.0, service_start - latest)
 
             detail_rows.append(
                 {
@@ -526,6 +592,7 @@ def audit_selected_ordered_sorties(
                     "service_start_hr": service_start,
                     "service_duration_hr": service,
                     "service_finish_hr": service_finish,
+                    "lateness_hr": lateness,
                 }
             )
             current_time = service_finish
@@ -661,12 +728,20 @@ def build_platform_node_timing(selected_sorties: pd.DataFrame, detail_df: pd.Dat
 
 def write_notes(big_m: float, operational_result: dict | None = None) -> None:
     lines = [
-        "# Strict Math Model with Ordered Multi-Customer Sortie Improvement",
+        "# Relaxed Multi-Trip Math Model with Ordered Sorties and En-Route Charging",
         "",
-        "This file documents `drone_robot_truck_team_model_ordered_sorties_strict_math_improved.py`.",
+        "This file documents `capped_flexible_docking_ordered_sortie_model.py`.",
+        "It follows the friend's relaxed, Eq.12-style penalized formulation (see",
+        "`pdf/model_formulation.tex`): hard customer service, truck routing, and",
+        "synchronization, with truck capacity and platform energy relaxed into",
+        "priced excess variables. Setting DRT_RELAXED_OBJECTIVE=0 restores the",
+        "legacy strict model, and DRT_Q_MAX_TRIPS=1 restores single-trip behavior.",
         "",
         "## Paper Parameter Scenario",
-        "This runner uses `data_processed/tdrp_tw_literature_params/<case>`, which stores the VRP-DR paper Table 3 values: truck speed 45 km/h, drone speed 75 km/h, robot speed 25 km/h, drone payload 25 kg, robot payload 20 kg, drone distance limit 20 km, and robot distance limit 15 km.",
+        "This runner reads fleet, cost, and penalty parameters from the instance's",
+        "`parameters.json` (NUM_TRUCKS, Q_t, Q_d, Q_r, E_d, E_r, fixed costs,",
+        "lambda_T, lambda_W, alpha, lambda_Q, lambda_E_*). Drones/robots per truck",
+        "are trimmed losslessly to MAX_*_PER_TRUCK x NUM_TRUCKS.",
         f"To keep the MILP solvable, ordered sortie generation is capped at {MAX_CUSTOMERS_PER_SORTIE} customers per sortie and the best {TOP_SORTIES_PER_TRUCK_LEG} routes per launch/recovery node pair.",
         "",
         "## Main Correction",
@@ -678,32 +753,39 @@ def write_notes(big_m: float, operational_result: dict | None = None) -> None:
         "The drone and robot variables use complete ordered sortie paths instead of single-customer sortie variables.",
         "A selected sortie can represent a path such as `6 -> 3 -> 8 -> 4`, so the route sequence is directly recoverable from the decision variable.",
         "",
-        "## Retained Model Structure",
-        "- Customer service exactly once.",
-        "- Truck, drone, and robot capacity constraints (hard).",
-        "- Drone and robot endurance enforced per sortie (hard): candidate generation excludes routes beyond the distance limit, and per-sortie constraints restate it in the MILP.",
-        "- Each physical drone or robot performs at most one sortie, so no inter-sortie sequencing or onboard platform tracking is required. Fleet sizes in the processed cases exceed the number of useful sorties, so this does not restrict the solution space.",
-        "- Flexible truck-platform synchronization for drone/robot launch and recovery.",
-        "- Drone launch variable `h_launch[v,d,s]` identifies which truck launches each selected drone sortie.",
-        "- Drone recovery variable `h_recover[v,d,s]` identifies which truck recovers each selected drone sortie.",
+        "## Relaxed Multi-Trip Model Structure",
+        "- Customer service exactly once (hard).",
+        "- Truck capacity relaxed: excess over Q_t is priced at lambda_Q (friend's Eq.12 term).",
+        "- Per-sortie platform payload caps stay hard (original formulation Eq.3).",
+        "- Drone/robot energy relaxed per trip: excess over the trip's battery level is priced at lambda_E (Wh).",
+        "- VRP-DR multi-trip: each platform flies at most one sortie per trip q = 1..Q_MAX_TRIPS; trips are used in order (used[q+1] <= used[q]).",
+        "- Battery inventory per platform trip: b[p,q+1] = b[p,q] - e[p,q] + c[p,q], with b[p,1] = full battery.",
+        "- En-route charging: c[p,q] <= charge_rate * (launch_time[q+1] - recovery_time[q]); consecutive trips of one platform stay on the same truck.",
+        "- Minimum turnaround TURNAROUND_H between a platform's consecutive trips.",
+        "- Each physical drone or robot performs at most one sortie per trip, so no pairwise sortie-precedence binaries are needed.",
+        "- Flexible truck-platform synchronization for drone/robot launch and recovery (launch and recovery trucks may differ across trips of one platform only via the same-truck rule).",
+        "- Cyclic sorties allowed: truck ready (departure) times dep_t are separated from arrival times a_t; recovery constrains dep_t.",
+        "- Drone launch variable `h_launch[v,d,q,s]` identifies which truck launches each selected drone sortie trip.",
+        "- Drone recovery variable `h_recover[v,d,q,s]` identifies which truck recovers each selected drone sortie trip.",
         "- Distinct drones interacting with each truck are limited by `MAX_DRONES_PER_TRUCK` using aggregate truck-drone pairing constraints.",
         "- Drone launches from the depot are limited by `DRONES_CARRIED_AT_DEPOT`; launches from any truck stop are limited by `MAX_DRONES_PER_TRUCK`.",
         "- Drone recoveries at truck stops and the end depot are limited by `MAX_DRONES_PER_TRUCK`.",
-        "- Robot launch variable `g_launch[v,r,s]` identifies which truck launches each selected robot sortie.",
-        "- Robot recovery variable `g_recover[v,r,s]` identifies which truck recovers each selected robot sortie.",
+        "- Robot launch variable `g_launch[v,r,q,s]` identifies which truck launches each selected robot sortie trip.",
+        "- Robot recovery variable `g_recover[v,r,q,s]` identifies which truck recovers each selected robot sortie trip.",
         "- Distinct robots interacting with each truck are limited by `MAX_ROBOTS_PER_TRUCK` using aggregate truck-robot pairing constraints.",
         "- Robot launches from the depot are limited by `ROBOTS_CARRIED_AT_DEPOT`; launches from any truck stop are limited by `MAX_ROBOTS_PER_TRUCK`.",
         "- Robot recoveries at truck stops and the end depot are limited by `MAX_ROBOTS_PER_TRUCK`.",
         "- Ordered sortie timing linked to truck launch and recovery times.",
         "- Time-window penalty constraints (soft).",
         "- Route-duration penalty (soft): truck depot departure is fixed at time 0, and each truck's end-depot arrival may exceed `T_max` only at a penalty. The global excess equals the maximum per-truck excess.",
-        "- Operating cost = variable travel cost + fixed activation costs (truck 30 per used truck, drone 10 per selected sortie, robot 8 per selected sortie; Malik et al., VRP-DR, arXiv:2505.23584, Table 3). Fixed costs are written in parameters.json as truck_fixed_cost / drone_fixed_cost / robot_fixed_cost; the same values remain model defaults as a safeguard.",
-        "- Operating cost plus the two soft penalties form the objective. Capacity and endurance are hard constraints with no penalty terms.",
-        "- Symmetry breaking: platform k+1 may fly a sortie only if platform k does, valid because platforms are identical and limited to one sortie each.",
+        "- Operating cost = variable travel cost + fixed activation costs (truck 30 per used truck, drone 10 per used drone, robot 8 per used robot; Malik et al., VRP-DR, arXiv:2505.23584, Table 3). Fixed costs are written in parameters.json as truck_fixed_cost / drone_fixed_cost / robot_fixed_cost; the same values remain model defaults as a safeguard.",
+        "- Objective: P = alpha * OpCost + (1-alpha) * Gamma + Pen_Q + Pen_E + Pen_T + Pen_W. Makespan Gamma is a decision variable (latest completion over used trucks and platform trips), blended with operating cost by alpha (default 1.0). Penalties sit outside the alpha blend in cost units.",
+        "- Model provenance: strict-model optimality certificates (e.g. slice6 67.1552, slice8 68.8452) do NOT transfer to the relaxed multi-trip model; relaxed solutions carry their excess values in the workbook for audit.",
+        "- Symmetry breaking: platform k+1 may be used only if platform k is, valid because platforms are identical.",
         "- Lossless fleet trimming: the model instantiates at most MAX_DRONES_PER_TRUCK x NUM_TRUCKS drones and MAX_ROBOTS_PER_TRUCK x NUM_TRUCKS robots, because the distinct-platform caps make any additional identical platforms provably unusable. This shrinks the MILP without changing the solution space.",
         "- Optional truck-only baseline: setting DRT_TRUCK_ONLY=1 fixes all drone and robot sortie variables to zero.",
-        "- Makespan is computed after solving from the reported truck and platform finish times. It is not a decision variable and is not part of the objective, matching the PDF formulation (Z plus route-duration and time-window penalty terms).",
         "- The `Truck Physical Timing` sheet compares each model arrival time with the earliest physically required time (travel chain, time windows, platform recovery), making any remaining harmless slack in arrival variables explicit.",
+        "- The `Battery & Charging` sheet audits per-platform-trip battery levels, charge amounts, energy consumed, and energy excess.",
         "",
         "## Added Operational Routing Completeness Constraints",
         "- Binary `used_truck[v]`.",
@@ -731,9 +813,9 @@ def write_notes(big_m: float, operational_result: dict | None = None) -> None:
         "",
         "## Synchronization Interpretation",
         "The model uses flexible truck-platform synchronization: an ordered sortie from `i` to `k` has one launch truck and one recovery truck.",
-        "If `h_launch[v,d,s] = 1`, drone `d` may launch only after truck `v` arrives at launch node `i`.",
-        "If `h_recover[v,d,s] = 1`, drone `d` must recover no later than truck `v` arrives at recovery node `k`.",
-        "The same interpretation applies to robot variables `g_launch[v,r,s]` and `g_recover[v,r,s]`.",
+        "If `h_launch[v,d,q,s] = 1`, drone `d` may launch only after truck `v` arrives at launch node `i` on trip `q`.",
+        "If `h_recover[v,d,q,s] = 1`, drone `d` must recover no later than truck `v` is ready to depart recovery node `k`.",
+        "The same interpretation applies to robot variables `g_launch[v,r,q,s]` and `g_recover[v,r,q,s]`.",
         "",
         f"## Big-M",
         f"Chosen M = `{big_m}`.",
@@ -744,6 +826,11 @@ def write_notes(big_m: float, operational_result: dict | None = None) -> None:
             [
                 "",
                 "## Ordered-Sortie Result",
+                f"- Model version: {operational_result.get('model_version')}",
+                f"- Relaxed objective: {bool(operational_result.get('relaxed_objective'))} (strict certificates do NOT transfer)",
+                f"- Max trips per platform: {operational_result.get('q_max_trips')}",
+                f"- Alpha (cost vs makespan): {operational_result.get('alpha')}",
+                f"- Cyclic sorties allowed: {bool(operational_result.get('allow_cyclic'))}",
                 f"- Solve status: {operational_result.get('solve_status')}",
                 f"- Objective: {operational_result.get('objective')}",
                 f"- Truck arcs: {operational_result.get('truck_arcs')}",
@@ -753,6 +840,9 @@ def write_notes(big_m: float, operational_result: dict | None = None) -> None:
                 f"- Feasible robot sequences generated: {operational_result.get('feasible_robot_sequences')}",
                 f"- Reported makespan: {operational_result.get('reported_makespan_hr')}",
                 f"- Route duration excess: {operational_result.get('route_duration_excess')}",
+                f"- Capacity excess (kg): {operational_result.get('capacity_excess_kg')}",
+                f"- Drone energy excess (Wh): {operational_result.get('drone_energy_excess_wh')}",
+                f"- Robot energy excess (Wh): {operational_result.get('robot_energy_excess_wh')}",
                 f"- Total penalty: {operational_result.get('total_penalty')}",
             ]
         )
@@ -786,11 +876,14 @@ def main() -> int:
     T = list(range(1, int(params["NUM_TRUCKS"]) + 1))
     D = list(range(1, int(params["NUM_DRONES"]) + 1))
     R = list(range(1, int(params["NUM_ROBOTS"]) + 1))
+    # Trip index set Q (VRP-DR multi-trip): q=1..Q_MAX_TRIPS. Q_MAX_TRIPS=1
+    # reproduces the legacy single-trip model.
+    Q = list(range(1, Q_MAX_TRIPS + 1))
     A = [(int(row.i), int(row.j)) for row in arcs.itertuples(index=False)]
     A_set = set(A)
     sortie_triplets = [(i, j, k) for (i, k) in A for j in C if i != j and j != k]
 
-    q = customers.set_index("customer_id")["demand"].astype(float).to_dict()
+    dem = customers.set_index("customer_id")["demand"].astype(float).to_dict()
     open_time = customers.set_index("customer_id")["open_time"].astype(float).to_dict()
     close_time = customers.set_index("customer_id")["close_time"].astype(float).to_dict()
     service_time = customers.set_index("customer_id")["service_time"].astype(float).to_dict()
@@ -818,9 +911,9 @@ def main() -> int:
     # identical and symmetry-broken.
     # Two independent lossless bounds: (a) the distinct-platform caps allow at
     # most max_per_truck * NUM_TRUCKS platforms per type; (b) each used
-    # platform flies exactly one sortie (one-sortie-per-platform) serving at
-    # least one customer, and each customer is served at most once, so at most
-    # n platforms of each type can be used in any feasible solution.
+    # platform flies at most one sortie per trip, and each customer is served
+    # at most once, so at most n platforms of each type can be used in any
+    # feasible solution.
     max_usable_drones = max(1, min(max_drones_per_truck * len(T), n))
     max_usable_robots = max(1, min(max_robots_per_truck * len(T), n))
     if len(D) > max_usable_drones:
@@ -839,8 +932,6 @@ def main() -> int:
     f_t = float(params.get("truck_fixed_cost", 30.0))
     f_d = float(params.get("drone_fixed_cost", 10.0))
     f_r = float(params.get("robot_fixed_cost", 8.0))
-    lambda_T = float(params["lambda_T"])
-    lambda_W = float(params["lambda_W"])
     max_time_value = max(float(np.max(truck_time)), float(np.max(drone_time)), float(np.max(robot_time)))
     big_m = max(T_max, max_time_value * len(V) * 10, 10000.0)
     write_notes(big_m)
@@ -848,8 +939,21 @@ def main() -> int:
     truck_cost = {(i, j): truck_time[i, j] * C_w + distance[i, j] * C_veh for (i, j) in A}
     drone_cost = {(i, j): drone_time[i, j] * C_w_drone + distance[i, j] * C_drone for i in V for j in V}
     robot_cost = {(i, j): robot_time[i, j] * C_w_r + robot_distance[i, j] * C_rob for i in V for j in V}
-    drone_sorties = generate_ordered_sorties(A, C, q, Q_d, E_d, drone_time, distance, drone_cost)
-    robot_sorties = generate_ordered_sorties(A, C, q, Q_r, E_r, robot_time, robot_distance, robot_cost)
+    # Cyclic sorties are on by default; DRT_ALLOW_CYCLIC=0 disables them for
+    # tractability testing on sparse instances.
+    allow_cyclic = os.environ.get("DRT_ALLOW_CYCLIC", "1") != "0"
+    drone_sorties = generate_ordered_sorties(
+        A, C, dem, Q_d, E_d, drone_time, distance, drone_cost,
+        energy_a=DRONE_ENERGY_A, energy_b=DRONE_ENERGY_B,
+        battery_wh=DRONE_BATTERY_WH, endurance_slack=ENDURANCE_SLACK,
+        allow_cyclic=allow_cyclic, cyclic_nodes=C,
+    )
+    robot_sorties = generate_ordered_sorties(
+        A, C, dem, Q_r, E_r, robot_time, robot_distance, robot_cost,
+        energy_a=ROBOT_ENERGY_A, energy_b=ROBOT_ENERGY_B,
+        battery_wh=ROBOT_BATTERY_WH, endurance_slack=ENDURANCE_SLACK,
+        allow_cyclic=allow_cyclic, cyclic_nodes=C,
+    )
     drone_sortie_ids = drone_sorties["sortie_id"].astype(int).tolist()
     robot_sortie_ids = robot_sorties["sortie_id"].astype(int).tolist()
     drone_sortie_by_id = drone_sorties.set_index("sortie_id").to_dict(orient="index")
@@ -877,13 +981,15 @@ def main() -> int:
     x = mdl.binary_var_dict(((v, i, j) for v in T for (i, j) in A), name="x")
     # Ordered sortie variables. Each sortie id represents a full path such as
     # 6 -> 3 -> 8 -> 4, not a single-customer shorthand.
-    y = mdl.binary_var_dict(((d, sid) for d in D for sid in drone_sortie_ids), name="y")
-    h_launch = mdl.binary_var_dict(((v, d, sid) for v in T for d in D for sid in drone_sortie_ids), name="h_launch")
-    h_recover = mdl.binary_var_dict(((v, d, sid) for v in T for d in D for sid in drone_sortie_ids), name="h_recover")
+    # Trip-indexed platform variables (VRP-DR multi-trip): y[d,q,sid] selects
+    # sortie sid as trip q of drone d. Q_MAX_TRIPS=1 gives the legacy model.
+    y = mdl.binary_var_dict(((d, q, sid) for d in D for q in Q for sid in drone_sortie_ids), name="y")
+    h_launch = mdl.binary_var_dict(((v, d, q, sid) for v in T for d in D for q in Q for sid in drone_sortie_ids), name="h_launch")
+    h_recover = mdl.binary_var_dict(((v, d, q, sid) for v in T for d in D for q in Q for sid in drone_sortie_ids), name="h_recover")
     drone_truck = mdl.binary_var_dict(((v, d) for v in T for d in D), name="drone_truck")
-    z = mdl.binary_var_dict(((r, sid) for r in R for sid in robot_sortie_ids), name="z")
-    g_launch = mdl.binary_var_dict(((v, r, sid) for v in T for r in R for sid in robot_sortie_ids), name="g_launch")
-    g_recover = mdl.binary_var_dict(((v, r, sid) for v in T for r in R for sid in robot_sortie_ids), name="g_recover")
+    z = mdl.binary_var_dict(((r, q, sid) for r in R for q in Q for sid in robot_sortie_ids), name="z")
+    g_launch = mdl.binary_var_dict(((v, r, q, sid) for v in T for r in R for q in Q for sid in robot_sortie_ids), name="g_launch")
+    g_recover = mdl.binary_var_dict(((v, r, q, sid) for v in T for r in R for q in Q for sid in robot_sortie_ids), name="g_recover")
     robot_truck = mdl.binary_var_dict(((v, r) for v in T for r in R), name="robot_truck")
     used_truck = mdl.binary_var_dict(T, name="used_truck")
     visit = mdl.binary_var_dict(((v, i) for v in T for i in C), name="visit")
@@ -899,6 +1005,10 @@ def main() -> int:
             var.ub = 0
 
     a_t = mdl.continuous_var_dict(((v, i) for v in T for i in V), lb=0, name="a_t")
+    # Truck ready (departure) times: arrival + service + waiting for returning
+    # platforms. Separating arrival from availability is what makes cyclic
+    # sorties (launch node == recovery node) feasible.
+    dep_t = mdl.continuous_var_dict(((v, i) for v in T for i in V), lb=0, name="dep_t")
     a_d = mdl.continuous_var_dict(V, lb=0, name="a_d")
     a_r = mdl.continuous_var_dict(V, lb=0, name="a_r")
     late_t = mdl.continuous_var_dict(C, lb=0, name="late_t")
@@ -909,11 +1019,11 @@ def main() -> int:
 
     truck_service = {i: mdl.sum(visit[v, i] for v in T) for i in C}
     drone_service = {
-        j: mdl.sum(y[d, sid] for d in D for sid, row in drone_sortie_by_id.items() if j in row["sequence"])
+        j: mdl.sum(y[d, q, sid] for d in D for q in Q for sid, row in drone_sortie_by_id.items() if j in row["sequence"])
         for j in C
     }
     robot_service = {
-        j: mdl.sum(z[r, sid] for r in R for sid, row in robot_sortie_by_id.items() if j in row["sequence"])
+        j: mdl.sum(z[r, q, sid] for r in R for q in Q for sid, row in robot_sortie_by_id.items() if j in row["sequence"])
         for j in C
     }
 
@@ -921,86 +1031,276 @@ def main() -> int:
     for i in C:
         mdl.add_constraint(truck_service[i] + drone_service[i] + robot_service[i] == 1, ctname=f"customer_service_{i}")
 
-    # PDF-based capacity constraints.
-    for v in T:
-        load_v = mdl.sum(q[i] * visit[v, i] for i in C)
-        mdl.add_constraint(load_v <= Q_t, ctname=f"truck_capacity_{v}")
-    for d, sid in y:
-        mdl.add_constraint(drone_sortie_by_id[sid]["payload"] * y[d, sid] <= Q_d, ctname=f"drone_capacity_{d}_{sid}")
-    for r, sid in z:
-        mdl.add_constraint(robot_sortie_by_id[sid]["payload"] * z[r, sid] <= Q_r, ctname=f"robot_capacity_{r}_{sid}")
+    # Relaxed truck capacity (friend's Eq.12 lambda_Q term): excess over Q_t is
+    # priced, not forbidden. Strict mode (DRT_RELAXED_OBJECTIVE=0) restores
+    # the hard constraint.
+    # Penalty prices: explicit DRT_* env vars take precedence over the
+    # instance parameters.json, so penalty calibration and alpha sweeps do
+    # not require editing data files. Unset env => params.json => code default.
+    def _pen(name: str, default: float):
+        return float(os.environ[name]) if name in os.environ else float(params.get(name, default))
 
-    # PDF-based endurance constraints. In this paper-parameter scenario,
-    # E_d and E_r are distance limits that apply per sortie: the battery is
-    # swapped or recharged when the platform docks with a truck. Candidate
-    # generation already excludes sorties whose full route distance exceeds
-    # the limit; these per-sortie constraints restate the limit explicitly
-    # so the model remains correct if the generation filter changes.
-    for d, sid in y:
-        mdl.add_constraint(
-            drone_sortie_by_id[sid]["travel_distance"] * y[d, sid] <= E_d,
-            ctname=f"drone_endurance_{d}_{sid}",
-        )
-    for r, sid in z:
-        mdl.add_constraint(
-            robot_sortie_by_id[sid]["travel_distance"] * z[r, sid] <= E_r,
-            ctname=f"robot_endurance_{r}_{sid}",
-        )
+    lambda_Q = _pen("DRT_LAMBDA_Q", LAMBDA_Q_DEFAULT)
+    lambda_E_drone = _pen("DRT_LAMBDA_E_DRONE", LAMBDA_E_DRONE_DEFAULT)
+    lambda_E_robot = _pen("DRT_LAMBDA_E_ROBOT", LAMBDA_E_ROBOT_DEFAULT)
+    lambda_T = _pen("DRT_LAMBDA_T", float(params["lambda_T"]))
+    lambda_W = _pen("DRT_LAMBDA_W", float(params["lambda_W"]))
+    alpha = _pen("DRT_ALPHA", ALPHA_COST)
+    cap_excess_t = mdl.continuous_var_dict(T, lb=0, name="cap_excess_t")
+    for v in T:
+        load_v = mdl.sum(dem[i] * visit[v, i] for i in C)
+        if RELAXED_OBJECTIVE:
+            mdl.add_constraint(cap_excess_t[v] >= load_v - Q_t, ctname=f"truck_capacity_excess_{v}")
+        else:
+            mdl.add_constraint(load_v <= Q_t, ctname=f"truck_capacity_{v}")
+    for d, q, sid in y:
+        mdl.add_constraint(drone_sortie_by_id[sid]["payload"] * y[d, q, sid] <= Q_d, ctname=f"drone_capacity_{d}_{q}_{sid}")
+    for r, q, sid in z:
+        mdl.add_constraint(robot_sortie_by_id[sid]["payload"] * z[r, q, sid] <= Q_r, ctname=f"robot_capacity_{r}_{q}_{sid}")
+
+    # Relaxed energy/endurance (friend's Eq.12 lambda_E terms, in Wh): excess
+    # over battery capacity is priced, not forbidden. Per-sortie payload caps
+    # above stay hard, faithful to the original formulation's Eq.3.
+    # VRP-DR multi-trip battery inventory (phase 5): per-trip energy draw is
+    # charged against the platform's battery level at the start of the trip,
+    # and the platform recharges aboard the truck between consecutive trips.
+    # With Q_MAX_TRIPS=1 this collapses to the single-trip excess model.
+    drone_energy_wh = {sid: float(drone_sortie_by_id[sid]["energy_wh"]) for sid in drone_sortie_ids}
+    robot_energy_wh = {sid: float(robot_sortie_by_id[sid]["energy_wh"]) for sid in robot_sortie_ids}
+    # Per-trip energy consumed: e[d,q] = sum_s e(s) * y[d,q,s].
+    trip_energy_d = {
+        (d, q): mdl.sum(drone_energy_wh[sid] * y[d, q, sid] for sid in drone_sortie_ids)
+        for d in D for q in Q
+    }
+    trip_energy_r = {
+        (r, q): mdl.sum(robot_energy_wh[sid] * z[r, q, sid] for sid in robot_sortie_ids)
+        for r in R for q in Q
+    }
+    # Battery level at the start of each trip (Wh), and priced excess over it.
+    b_d = mdl.continuous_var_dict(((d, q) for d in D for q in Q), lb=0, ub=DRONE_BATTERY_WH, name="b_d")
+    b_r = mdl.continuous_var_dict(((r, q) for r in R for q in Q), lb=0, ub=ROBOT_BATTERY_WH, name="b_r")
+    end_excess_d = mdl.continuous_var_dict(((d, q) for d in D for q in Q), lb=0, name="end_excess_d")
+    end_excess_r = mdl.continuous_var_dict(((r, q) for r in R for q in Q), lb=0, name="end_excess_r")
+    for d in D:
+        mdl.add_constraint(b_d[d, 1] == DRONE_BATTERY_WH, ctname=f"battery_init_drone_{d}")
+        for q in Q:
+            if RELAXED_OBJECTIVE:
+                mdl.add_constraint(
+                    end_excess_d[d, q] >= trip_energy_d[d, q] - b_d[d, q],
+                    ctname=f"drone_energy_excess_{d}_{q}",
+                )
+            # Strict mode keeps the original distance-based endurance below;
+            # no energy-vs-battery hard constraint, so the strict feasible set
+            # is unchanged from the certified model.
+    for r in R:
+        mdl.add_constraint(b_r[r, 1] == ROBOT_BATTERY_WH, ctname=f"battery_init_robot_{r}")
+        for q in Q:
+            if RELAXED_OBJECTIVE:
+                mdl.add_constraint(
+                    end_excess_r[r, q] >= trip_energy_r[r, q] - b_r[r, q],
+                    ctname=f"robot_energy_excess_{r}_{q}",
+                )
+
+    # Per-trip launch/recovery instants. lt is pinned to the launch truck's
+    # ready (departure) time; rt is pinned to the platform's finish time at
+    # the recovery node. Both directions are pinned so the model cannot widen
+    # the charging window to harvest free energy.
+    lt_d = mdl.continuous_var_dict(((d, q) for d in D for q in Q), lb=0, name="lt_d")
+    rt_d = mdl.continuous_var_dict(((d, q) for d in D for q in Q), lb=0, name="rt_d")
+    lt_r = mdl.continuous_var_dict(((r, q) for r in R for q in Q), lb=0, name="lt_r")
+    rt_r = mdl.continuous_var_dict(((r, q) for r in R for q in Q), lb=0, name="rt_r")
+    # The inter-trip machinery below (launch/recovery instants, charging
+    # windows, same-truck continuity, turnaround) is only needed when a
+    # platform can fly more than one trip. With Q_MAX_TRIPS=1 it is dead
+    # weight, so it is skipped to keep the single-trip model lean.
+    if len(Q) > 1:
+        for d in D:
+            for q in Q:
+                used_dq = mdl.sum(y[d, q, sid] for sid in drone_sortie_ids)
+                mdl.add_constraint(lt_d[d, q] <= big_m * used_dq, ctname=f"lt_drone_off_{d}_{q}")
+                mdl.add_constraint(rt_d[d, q] <= big_m * used_dq, ctname=f"rt_drone_off_{d}_{q}")
+                for sid in drone_sortie_ids:
+                    row = drone_sortie_by_id[sid]
+                    launch = int(row["i"])
+                    recover = int(row["k"])
+                    last = int(row["sequence"][-1])
+                    finish = a_d[last] + float(service_time.get(last, 0.0)) + drone_time[last, recover]
+                    for v in T:
+                        mdl.add_constraint(
+                            lt_d[d, q] >= dep_t[v, launch] - big_m * (1 - h_launch[v, d, q, sid]),
+                            ctname=f"lt_drone_lb_{d}_{q}_{sid}_{v}",
+                        )
+                        mdl.add_constraint(
+                            lt_d[d, q] <= dep_t[v, launch] + big_m * (1 - h_launch[v, d, q, sid]),
+                            ctname=f"lt_drone_ub_{d}_{q}_{sid}_{v}",
+                        )
+                    mdl.add_constraint(
+                        rt_d[d, q] >= finish - big_m * (1 - y[d, q, sid]),
+                        ctname=f"rt_drone_lb_{d}_{q}_{sid}",
+                    )
+                    mdl.add_constraint(
+                        rt_d[d, q] <= finish + big_m * (1 - y[d, q, sid]),
+                        ctname=f"rt_drone_ub_{d}_{q}_{sid}",
+                    )
+        for r in R:
+            for q in Q:
+                used_rq = mdl.sum(z[r, q, sid] for sid in robot_sortie_ids)
+                mdl.add_constraint(lt_r[r, q] <= big_m * used_rq, ctname=f"lt_robot_off_{r}_{q}")
+                mdl.add_constraint(rt_r[r, q] <= big_m * used_rq, ctname=f"rt_robot_off_{r}_{q}")
+                for sid in robot_sortie_ids:
+                    row = robot_sortie_by_id[sid]
+                    launch = int(row["i"])
+                    recover = int(row["k"])
+                    last = int(row["sequence"][-1])
+                    finish = a_r[last] + float(service_time.get(last, 0.0)) + robot_time[last, recover]
+                    for v in T:
+                        mdl.add_constraint(
+                            lt_r[r, q] >= dep_t[v, launch] - big_m * (1 - g_launch[v, r, q, sid]),
+                            ctname=f"lt_robot_lb_{r}_{q}_{sid}_{v}",
+                        )
+                        mdl.add_constraint(
+                            lt_r[r, q] <= dep_t[v, launch] + big_m * (1 - g_launch[v, r, q, sid]),
+                            ctname=f"lt_robot_ub_{r}_{q}_{sid}_{v}",
+                        )
+                    mdl.add_constraint(
+                        rt_r[r, q] >= finish - big_m * (1 - z[r, q, sid]),
+                        ctname=f"rt_robot_lb_{r}_{q}_{sid}",
+                    )
+                    mdl.add_constraint(
+                        rt_r[r, q] <= finish + big_m * (1 - z[r, q, sid]),
+                        ctname=f"rt_robot_ub_{r}_{q}_{sid}",
+                    )
+
+        # En-route charging: between trip q and trip q+1 the platform recharges
+        # aboard the truck at r_p W. Until explicit truck-to-truck transfer is
+        # modeled, consecutive trips of one platform stay on the same truck:
+        # the launch truck of trip q+1 must be the recovery truck of trip q.
+        c_d = mdl.continuous_var_dict(((d, q) for d in D for q in Q[:-1]), lb=0, name="c_d")
+        c_r = mdl.continuous_var_dict(((r, q) for r in R for q in Q[:-1]), lb=0, name="c_r")
+        for d in D:
+            for qi in range(len(Q) - 1):
+                q, qn = Q[qi], Q[qi + 1]
+                used_qn = mdl.sum(y[d, qn, sid] for sid in drone_sortie_ids)
+                mdl.add_constraint(
+                    lt_d[d, qn] >= rt_d[d, q] + TURNAROUND_H - big_m * (1 - used_qn),
+                    ctname=f"turnaround_drone_{d}_{q}",
+                )
+                mdl.add_constraint(
+                    b_d[d, qn] == b_d[d, q] - trip_energy_d[d, q] + c_d[d, q],
+                    ctname=f"battery_balance_drone_{d}_{q}",
+                )
+                mdl.add_constraint(
+                    c_d[d, q] <= (DRONE_CHARGE_W / 1000.0) * (lt_d[d, qn] - rt_d[d, q]) + big_m * (1 - used_qn),
+                    ctname=f"charge_window_drone_{d}_{q}",
+                )
+                mdl.add_constraint(c_d[d, q] <= DRONE_BATTERY_WH * used_qn, ctname=f"charge_off_drone_{d}_{q}")
+                for v in T:
+                    mdl.add_constraint(
+                        mdl.sum(h_launch[v, d, qn, sid] for sid in drone_sortie_ids)
+                        <= mdl.sum(h_recover[v, d, q, sid] for sid in drone_sortie_ids) + (1 - used_qn),
+                        ctname=f"same_truck_drone_{d}_{q}_{v}",
+                    )
+        for r in R:
+            for qi in range(len(Q) - 1):
+                q, qn = Q[qi], Q[qi + 1]
+                used_qn = mdl.sum(z[r, qn, sid] for sid in robot_sortie_ids)
+                mdl.add_constraint(
+                    lt_r[r, qn] >= rt_r[r, q] + TURNAROUND_H - big_m * (1 - used_qn),
+                    ctname=f"turnaround_robot_{r}_{q}",
+                )
+                mdl.add_constraint(
+                    b_r[r, qn] == b_r[r, q] - trip_energy_r[r, q] + c_r[r, q],
+                    ctname=f"battery_balance_robot_{r}_{q}",
+                )
+                mdl.add_constraint(
+                    c_r[r, q] <= (ROBOT_CHARGE_W / 1000.0) * (lt_r[r, qn] - rt_r[r, q]) + big_m * (1 - used_qn),
+                    ctname=f"charge_window_robot_{r}_{q}",
+                )
+                mdl.add_constraint(c_r[r, q] <= ROBOT_BATTERY_WH * used_qn, ctname=f"charge_off_robot_{r}_{q}")
+                for v in T:
+                    mdl.add_constraint(
+                        mdl.sum(g_launch[v, r, qn, sid] for sid in robot_sortie_ids)
+                        <= mdl.sum(g_recover[v, r, q, sid] for sid in robot_sortie_ids) + (1 - used_qn),
+                        ctname=f"same_truck_robot_{r}_{q}_{v}",
+                    )
+
+    # Strict-mode endurance restatement (distance-based, as in the original
+    # formulation): kept per trip when DRT_RELAXED_OBJECTIVE=0.
+    for d, q, sid in y:
+        if not RELAXED_OBJECTIVE:
+            mdl.add_constraint(
+                drone_sortie_by_id[sid]["travel_distance"] * y[d, q, sid] <= E_d,
+                ctname=f"drone_endurance_{d}_{q}_{sid}",
+            )
+    for r, q, sid in z:
+        if not RELAXED_OBJECTIVE:
+            mdl.add_constraint(
+                robot_sortie_by_id[sid]["travel_distance"] * z[r, q, sid] <= E_r,
+                ctname=f"robot_endurance_{r}_{q}_{sid}",
+            )
 
     # Flexible docking synchronization. The launch truck and recovery truck
     # can be different vehicles, as long as each truck visits the proper node.
     for d in D:
-        for sid in drone_sortie_ids:
-            row = drone_sortie_by_id[sid]
-            launch = int(row["i"])
-            recover = int(row["k"])
-            mdl.add_constraint(
-                mdl.sum(h_launch[v, d, sid] for v in T) == y[d, sid],
-                ctname=f"assign_selected_drone_sortie_launch_truck_{d}_{sid}",
-            )
-            mdl.add_constraint(
-                mdl.sum(h_recover[v, d, sid] for v in T) == y[d, sid],
-                ctname=f"assign_selected_drone_sortie_recovery_truck_{d}_{sid}",
-            )
-            for v in T:
-                if launch == start_depot:
-                    mdl.add_constraint(h_launch[v, d, sid] <= used_truck[v], ctname=f"sync_drone_launch_depot_{v}_{d}_{sid}")
-                elif launch in C:
-                    mdl.add_constraint(h_launch[v, d, sid] <= visit[v, launch], ctname=f"sync_drone_launch_visit_{v}_{d}_{sid}")
-                else:
-                    mdl.add_constraint(h_launch[v, d, sid] <= 0, ctname=f"sync_drone_launch_invalid_{v}_{d}_{sid}")
+        for q in Q:
+            for sid in drone_sortie_ids:
+                row = drone_sortie_by_id[sid]
+                launch = int(row["i"])
+                recover = int(row["k"])
+                mdl.add_constraint(
+                    mdl.sum(h_launch[v, d, q, sid] for v in T) == y[d, q, sid],
+                    ctname=f"assign_selected_drone_sortie_launch_truck_{d}_{q}_{sid}",
+                )
+                mdl.add_constraint(
+                    mdl.sum(h_recover[v, d, q, sid] for v in T) == y[d, q, sid],
+                    ctname=f"assign_selected_drone_sortie_recovery_truck_{d}_{q}_{sid}",
+                )
+                for v in T:
+                    if launch == start_depot:
+                        mdl.add_constraint(h_launch[v, d, q, sid] <= used_truck[v], ctname=f"sync_drone_launch_depot_{v}_{d}_{q}_{sid}")
+                    elif launch in C:
+                        mdl.add_constraint(h_launch[v, d, q, sid] <= visit[v, launch], ctname=f"sync_drone_launch_visit_{v}_{d}_{q}_{sid}")
+                    else:
+                        mdl.add_constraint(h_launch[v, d, q, sid] <= 0, ctname=f"sync_drone_launch_invalid_{v}_{d}_{q}_{sid}")
 
-                if recover == end_depot:
-                    mdl.add_constraint(h_recover[v, d, sid] <= used_truck[v], ctname=f"sync_drone_recover_depot_{v}_{d}_{sid}")
-                elif recover in C:
-                    mdl.add_constraint(h_recover[v, d, sid] <= visit[v, recover], ctname=f"sync_drone_recover_visit_{v}_{d}_{sid}")
-                else:
-                    mdl.add_constraint(h_recover[v, d, sid] <= 0, ctname=f"sync_drone_recover_invalid_{v}_{d}_{sid}")
-        # Physical-platform consistency: each drone performs at most one sortie.
-        # This dominates the older per-node departure/recovery exclusivity and
-        # removes the need for inter-sortie sequencing or onboard drone tracking.
-        # The processed cases carry more drones than useful sorties, so this
-        # constraint does not restrict the solution space in these experiments.
+                    if recover == end_depot:
+                        mdl.add_constraint(h_recover[v, d, q, sid] <= used_truck[v], ctname=f"sync_drone_recover_depot_{v}_{d}_{q}_{sid}")
+                    elif recover in C:
+                        mdl.add_constraint(h_recover[v, d, q, sid] <= visit[v, recover], ctname=f"sync_drone_recover_visit_{v}_{d}_{q}_{sid}")
+                    else:
+                        mdl.add_constraint(h_recover[v, d, q, sid] <= 0, ctname=f"sync_drone_recover_invalid_{v}_{d}_{q}_{sid}")
+        # Physical-platform consistency: each drone performs at most one sortie
+        # per trip. Trip sequencing (used[d,q+1] <= used[d,q]) ensures trips
+        # are used in order.
         mdl.add_constraint(
-            mdl.sum(y[d, sid] for sid in drone_sortie_ids) <= 1,
-            ctname=f"one_sortie_per_drone_{d}",
+            mdl.sum(y[d, q, sid] for sid in drone_sortie_ids) <= 1,
+            ctname=f"one_sortie_per_drone_trip_{d}_{q}",
         )
+    # Trip sequencing (VRP-DR multi-trip): trips are used in order.
+    # used[d,q+1] <= used[d,q] prevents gaps in the trip sequence.
+    for d in D:
+        for qi in range(len(Q) - 1):
+            q = Q[qi]
+            q_next = Q[qi + 1]
+            used_q = mdl.sum(y[d, q, sid] for sid in drone_sortie_ids)
+            used_q_next = mdl.sum(y[d, q_next, sid] for sid in drone_sortie_ids)
+            mdl.add_constraint(used_q_next <= used_q, ctname=f"drone_trip_sequence_{d}_{q}")
     for v in T:
         mdl.add_constraint(
             mdl.sum(drone_truck[v, d] for d in D) <= max_drones_per_truck * used_truck[v],
             ctname=f"max_distinct_drones_assigned_to_truck_{v}",
         )
         for d in D:
-            drone_use_by_truck = mdl.sum(h_launch[v, d, sid] + h_recover[v, d, sid] for sid in drone_sortie_ids)
-            # With at most one sortie per drone, a drone does at most one launch
-            # and one recovery in total, so 2 is a valid tight coefficient.
-            mdl.add_constraint(drone_use_by_truck <= 2 * drone_truck[v, d], ctname=f"drone_truck_pair_upper_{v}_{d}")
+            drone_use_by_truck = mdl.sum(h_launch[v, d, q, sid] + h_recover[v, d, q, sid] for q in Q for sid in drone_sortie_ids)
+            # With at most one sortie per trip and Q_MAX_TRIPS trips, a drone
+            # does at most 2*Q_MAX_TRIPS launches+recoveries in total.
+            mdl.add_constraint(drone_use_by_truck <= 2 * Q_MAX_TRIPS * drone_truck[v, d], ctname=f"drone_truck_pair_upper_{v}_{d}")
             mdl.add_constraint(drone_truck[v, d] <= drone_use_by_truck, ctname=f"drone_truck_pair_lower_{v}_{d}")
         for launch in V:
             launch_sorties = [sid for sid in drone_sortie_ids if int(drone_sortie_by_id[sid]["i"]) == launch]
             if not launch_sorties:
                 continue
-            launch_count = mdl.sum(h_launch[v, d, sid] for d in D for sid in launch_sorties)
+            launch_count = mdl.sum(h_launch[v, d, q, sid] for d in D for q in Q for sid in launch_sorties)
             if launch == start_depot:
                 mdl.add_constraint(
                     launch_count <= drones_carried_at_depot * used_truck[v],
@@ -1015,7 +1315,7 @@ def main() -> int:
             recovery_sorties = [sid for sid in drone_sortie_ids if int(drone_sortie_by_id[sid]["k"]) == recover]
             if not recovery_sorties:
                 continue
-            recovery_count = mdl.sum(h_recover[v, d, sid] for d in D for sid in recovery_sorties)
+            recovery_count = mdl.sum(h_recover[v, d, q, sid] for d in D for q in Q for sid in recovery_sorties)
             if recover == end_depot:
                 mdl.add_constraint(
                     recovery_count <= max_drones_per_truck * used_truck[v],
@@ -1028,52 +1328,61 @@ def main() -> int:
                 )
 
     for r in R:
-        for sid in robot_sortie_ids:
-            row = robot_sortie_by_id[sid]
-            launch = int(row["i"])
-            recover = int(row["k"])
-            mdl.add_constraint(
-                mdl.sum(g_launch[v, r, sid] for v in T) == z[r, sid],
-                ctname=f"assign_selected_robot_sortie_launch_truck_{r}_{sid}",
-            )
-            mdl.add_constraint(
-                mdl.sum(g_recover[v, r, sid] for v in T) == z[r, sid],
-                ctname=f"assign_selected_robot_sortie_recovery_truck_{r}_{sid}",
-            )
-            for v in T:
-                if launch == start_depot:
-                    mdl.add_constraint(g_launch[v, r, sid] <= used_truck[v], ctname=f"sync_robot_launch_depot_{v}_{r}_{sid}")
-                elif launch in C:
-                    mdl.add_constraint(g_launch[v, r, sid] <= visit[v, launch], ctname=f"sync_robot_launch_visit_{v}_{r}_{sid}")
-                else:
-                    mdl.add_constraint(g_launch[v, r, sid] <= 0, ctname=f"sync_robot_launch_invalid_{v}_{r}_{sid}")
+        for q in Q:
+            for sid in robot_sortie_ids:
+                row = robot_sortie_by_id[sid]
+                launch = int(row["i"])
+                recover = int(row["k"])
+                mdl.add_constraint(
+                    mdl.sum(g_launch[v, r, q, sid] for v in T) == z[r, q, sid],
+                    ctname=f"assign_selected_robot_sortie_launch_truck_{r}_{q}_{sid}",
+                )
+                mdl.add_constraint(
+                    mdl.sum(g_recover[v, r, q, sid] for v in T) == z[r, q, sid],
+                    ctname=f"assign_selected_robot_sortie_recovery_truck_{r}_{q}_{sid}",
+                )
+                for v in T:
+                    if launch == start_depot:
+                        mdl.add_constraint(g_launch[v, r, q, sid] <= used_truck[v], ctname=f"sync_robot_launch_depot_{v}_{r}_{q}_{sid}")
+                    elif launch in C:
+                        mdl.add_constraint(g_launch[v, r, q, sid] <= visit[v, launch], ctname=f"sync_robot_launch_visit_{v}_{r}_{q}_{sid}")
+                    else:
+                        mdl.add_constraint(g_launch[v, r, q, sid] <= 0, ctname=f"sync_robot_launch_invalid_{v}_{r}_{q}_{sid}")
 
-                if recover == end_depot:
-                    mdl.add_constraint(g_recover[v, r, sid] <= used_truck[v], ctname=f"sync_robot_recover_depot_{v}_{r}_{sid}")
-                elif recover in C:
-                    mdl.add_constraint(g_recover[v, r, sid] <= visit[v, recover], ctname=f"sync_robot_recover_visit_{v}_{r}_{sid}")
-                else:
-                    mdl.add_constraint(g_recover[v, r, sid] <= 0, ctname=f"sync_robot_recover_invalid_{v}_{r}_{sid}")
-        # Physical-platform consistency: each robot performs at most one sortie.
-        # Same reasoning as the drone constraint above.
+                    if recover == end_depot:
+                        mdl.add_constraint(g_recover[v, r, q, sid] <= used_truck[v], ctname=f"sync_robot_recover_depot_{v}_{r}_{q}_{sid}")
+                    elif recover in C:
+                        mdl.add_constraint(g_recover[v, r, q, sid] <= visit[v, recover], ctname=f"sync_robot_recover_visit_{v}_{r}_{q}_{sid}")
+                    else:
+                        mdl.add_constraint(g_recover[v, r, q, sid] <= 0, ctname=f"sync_robot_recover_invalid_{v}_{r}_{q}_{sid}")
+        # Physical-platform consistency: each robot performs at most one sortie
+        # per trip. Same reasoning as the drone constraint above.
         mdl.add_constraint(
-            mdl.sum(z[r, sid] for sid in robot_sortie_ids) <= 1,
-            ctname=f"one_sortie_per_robot_{r}",
+            mdl.sum(z[r, q, sid] for sid in robot_sortie_ids) <= 1,
+            ctname=f"one_sortie_per_robot_trip_{r}_{q}",
         )
+    # Trip sequencing for robots.
+    for r in R:
+        for qi in range(len(Q) - 1):
+            q = Q[qi]
+            q_next = Q[qi + 1]
+            used_q = mdl.sum(z[r, q, sid] for sid in robot_sortie_ids)
+            used_q_next = mdl.sum(z[r, q_next, sid] for sid in robot_sortie_ids)
+            mdl.add_constraint(used_q_next <= used_q, ctname=f"robot_trip_sequence_{r}_{q}")
     for v in T:
         mdl.add_constraint(
             mdl.sum(robot_truck[v, r] for r in R) <= max_robots_per_truck * used_truck[v],
             ctname=f"max_distinct_robots_assigned_to_truck_{v}",
         )
         for r in R:
-            robot_use_by_truck = mdl.sum(g_launch[v, r, sid] + g_recover[v, r, sid] for sid in robot_sortie_ids)
-            mdl.add_constraint(robot_use_by_truck <= 2 * robot_truck[v, r], ctname=f"robot_truck_pair_upper_{v}_{r}")
+            robot_use_by_truck = mdl.sum(g_launch[v, r, q, sid] + g_recover[v, r, q, sid] for q in Q for sid in robot_sortie_ids)
+            mdl.add_constraint(robot_use_by_truck <= 2 * Q_MAX_TRIPS * robot_truck[v, r], ctname=f"robot_truck_pair_upper_{v}_{r}")
             mdl.add_constraint(robot_truck[v, r] <= robot_use_by_truck, ctname=f"robot_truck_pair_lower_{v}_{r}")
         for launch in V:
             launch_sorties = [sid for sid in robot_sortie_ids if int(robot_sortie_by_id[sid]["i"]) == launch]
             if not launch_sorties:
                 continue
-            launch_count = mdl.sum(g_launch[v, r, sid] for r in R for sid in launch_sorties)
+            launch_count = mdl.sum(g_launch[v, r, q, sid] for r in R for q in Q for sid in launch_sorties)
             if launch == start_depot:
                 mdl.add_constraint(
                     launch_count <= robots_carried_at_depot * used_truck[v],
@@ -1088,7 +1397,7 @@ def main() -> int:
             recovery_sorties = [sid for sid in robot_sortie_ids if int(robot_sortie_by_id[sid]["k"]) == recover]
             if not recovery_sorties:
                 continue
-            recovery_count = mdl.sum(g_recover[v, r, sid] for r in R for sid in recovery_sorties)
+            recovery_count = mdl.sum(g_recover[v, r, q, sid] for r in R for q in Q for sid in recovery_sorties)
             if recover == end_depot:
                 mdl.add_constraint(
                     recovery_count <= max_robots_per_truck * used_truck[v],
@@ -1101,19 +1410,19 @@ def main() -> int:
                 )
 
     # Symmetry breaking. All drones (and all robots) are identical and each
-    # performs at most one sortie, so platform k+1 may fly only if platform k
-    # flies. This removes permutation-equivalent solutions without cutting off
-    # any distinct physical plan.
+    # performs at most one sortie per trip, so platform k+1 may be used only
+    # if platform k is. This removes permutation-equivalent solutions without
+    # cutting off any distinct physical plan.
     for d_prev, d_next in zip(D, D[1:]):
         mdl.add_constraint(
-            mdl.sum(y[d_next, sid] for sid in drone_sortie_ids)
-            <= mdl.sum(y[d_prev, sid] for sid in drone_sortie_ids),
+            mdl.sum(y[d_next, q, sid] for q in Q for sid in drone_sortie_ids)
+            <= mdl.sum(y[d_prev, q, sid] for q in Q for sid in drone_sortie_ids),
             ctname=f"symmetry_drone_{d_prev}_{d_next}",
         )
     for r_prev, r_next in zip(R, R[1:]):
         mdl.add_constraint(
-            mdl.sum(z[r_next, sid] for sid in robot_sortie_ids)
-            <= mdl.sum(z[r_prev, sid] for sid in robot_sortie_ids),
+            mdl.sum(z[r_next, q, sid] for q in Q for sid in robot_sortie_ids)
+            <= mdl.sum(z[r_prev, q, sid] for q in Q for sid in robot_sortie_ids),
             ctname=f"symmetry_robot_{r_prev}_{r_next}",
         )
 
@@ -1131,50 +1440,52 @@ def main() -> int:
     # Ordered sortie timing. These constraints force the selected ordered
     # drone/robot path to occur between its launch-truck and recovery-truck times.
     for d in D:
-        for sid in drone_sortie_ids:
-            row = drone_sortie_by_id[sid]
-            launch = int(row["i"])
-            recover = int(row["k"])
-            sequence = tuple(int(customer) for customer in row["sequence"])
-            first = sequence[0]
-            last = sequence[-1]
-            for v in T:
-                mdl.add_constraint(
-                    a_d[first] >= a_t[v, launch] + drone_time[launch, first] - big_m * (1 - h_launch[v, d, sid]),
-                    ctname=f"sortie_time_drone_launch_{d}_{sid}_{v}",
-                )
-                mdl.add_constraint(
-                    a_t[v, recover] >= a_d[last] + service_time[last] + drone_time[last, recover] - big_m * (1 - h_recover[v, d, sid]),
-                    ctname=f"sortie_time_drone_recover_{d}_{sid}_{v}",
-                )
-            for prev, nxt in zip(sequence[:-1], sequence[1:]):
-                mdl.add_constraint(
-                    a_d[nxt] >= a_d[prev] + service_time[prev] + drone_time[prev, nxt] - big_m * (1 - y[d, sid]),
-                    ctname=f"sortie_time_drone_seq_{d}_{sid}_{prev}_{nxt}",
-                )
+        for q in Q:
+            for sid in drone_sortie_ids:
+                row = drone_sortie_by_id[sid]
+                launch = int(row["i"])
+                recover = int(row["k"])
+                sequence = tuple(int(customer) for customer in row["sequence"])
+                first = sequence[0]
+                last = sequence[-1]
+                for v in T:
+                    mdl.add_constraint(
+                        a_d[first] >= a_t[v, launch] + drone_time[launch, first] - big_m * (1 - h_launch[v, d, q, sid]),
+                        ctname=f"sortie_time_drone_launch_{d}_{q}_{sid}_{v}",
+                    )
+                    mdl.add_constraint(
+                        dep_t[v, recover] >= a_d[last] + service_time[last] + drone_time[last, recover] - big_m * (1 - h_recover[v, d, q, sid]),
+                        ctname=f"sortie_time_drone_recover_{d}_{q}_{sid}_{v}",
+                    )
+                for prev, nxt in zip(sequence[:-1], sequence[1:]):
+                    mdl.add_constraint(
+                        a_d[nxt] >= a_d[prev] + service_time[prev] + drone_time[prev, nxt] - big_m * (1 - y[d, q, sid]),
+                        ctname=f"sortie_time_drone_seq_{d}_{q}_{sid}_{prev}_{nxt}",
+                    )
 
     for r in R:
-        for sid in robot_sortie_ids:
-            row = robot_sortie_by_id[sid]
-            launch = int(row["i"])
-            recover = int(row["k"])
-            sequence = tuple(int(customer) for customer in row["sequence"])
-            first = sequence[0]
-            last = sequence[-1]
-            for v in T:
-                mdl.add_constraint(
-                    a_r[first] >= a_t[v, launch] + robot_time[launch, first] - big_m * (1 - g_launch[v, r, sid]),
-                    ctname=f"sortie_time_robot_launch_{r}_{sid}_{v}",
-                )
-                mdl.add_constraint(
-                    a_t[v, recover] >= a_r[last] + service_time[last] + robot_time[last, recover] - big_m * (1 - g_recover[v, r, sid]),
-                    ctname=f"sortie_time_robot_recover_{r}_{sid}_{v}",
-                )
-            for prev, nxt in zip(sequence[:-1], sequence[1:]):
-                mdl.add_constraint(
-                    a_r[nxt] >= a_r[prev] + service_time[prev] + robot_time[prev, nxt] - big_m * (1 - z[r, sid]),
-                    ctname=f"sortie_time_robot_seq_{r}_{sid}_{prev}_{nxt}",
-                )
+        for q in Q:
+            for sid in robot_sortie_ids:
+                row = robot_sortie_by_id[sid]
+                launch = int(row["i"])
+                recover = int(row["k"])
+                sequence = tuple(int(customer) for customer in row["sequence"])
+                first = sequence[0]
+                last = sequence[-1]
+                for v in T:
+                    mdl.add_constraint(
+                        a_r[first] >= a_t[v, launch] + robot_time[launch, first] - big_m * (1 - g_launch[v, r, q, sid]),
+                        ctname=f"sortie_time_robot_launch_{r}_{q}_{sid}_{v}",
+                    )
+                    mdl.add_constraint(
+                        dep_t[v, recover] >= a_r[last] + service_time[last] + robot_time[last, recover] - big_m * (1 - g_recover[v, r, q, sid]),
+                        ctname=f"sortie_time_robot_recover_{r}_{q}_{sid}_{v}",
+                    )
+                for prev, nxt in zip(sequence[:-1], sequence[1:]):
+                    mdl.add_constraint(
+                        a_r[nxt] >= a_r[prev] + service_time[prev] + robot_time[prev, nxt] - big_m * (1 - z[r, q, sid]),
+                        ctname=f"sortie_time_robot_seq_{r}_{q}_{sid}_{prev}_{nxt}",
+                    )
 
     # ============================================================
     # OPERATIONAL ROUTING COMPLETENESS CONSTRAINTS
@@ -1216,14 +1527,22 @@ def main() -> int:
 
     # COMPUTATIONAL NOTE: truck-indexed arrival times propagate along selected physical arcs.
     # Truck depot departure is fixed at clock time 0 by modeling choice.
+    # Ready times dep_t separate arrival from availability so cyclic sorties
+    # (launch == recovery node) are feasible: the truck waits at the node.
     for v in T:
         mdl.add_constraint(a_t[v, start_depot] == 0, ctname=f"op_start_time_truck_{v}")
+        mdl.add_constraint(dep_t[v, start_depot] >= a_t[v, start_depot], ctname=f"op_ready_depot_start_{v}")
+        mdl.add_constraint(dep_t[v, end_depot] >= a_t[v, end_depot], ctname=f"op_ready_depot_end_{v}")
+        for i in C:
+            mdl.add_constraint(
+                dep_t[v, i] >= a_t[v, i] + float(service_time.get(i, 0.0)) - big_m * (1 - visit[v, i]),
+                ctname=f"op_ready_customer_{v}_{i}",
+            )
 
     for v in T:
         for i, j in A:
-            departure_service = float(service_time.get(i, 0.0))
             mdl.add_constraint(
-                a_t[v, j] >= a_t[v, i] + departure_service + truck_time[i, j] - big_m * (1 - x[v, i, j]),
+                a_t[v, j] >= dep_t[v, i] + truck_time[i, j] - big_m * (1 - x[v, i, j]),
                 ctname=f"op_time_propagation_{v}_{i}_{j}",
             )
 
@@ -1265,31 +1584,78 @@ def main() -> int:
 
     # Variable (distance/time) operating costs.
     truck_variable_cost = mdl.sum(truck_cost[i, j] * x[v, i, j] for v in T for (i, j) in A)
-    drone_variable_cost = mdl.sum(drone_sortie_by_id[sid]["cost"] * y[d, sid] for d in D for sid in drone_sortie_ids)
-    robot_variable_cost = mdl.sum(robot_sortie_by_id[sid]["cost"] * z[r, sid] for r in R for sid in robot_sortie_ids)
+    drone_variable_cost = mdl.sum(drone_sortie_by_id[sid]["cost"] * y[d, q, sid] for d in D for q in Q for sid in drone_sortie_ids)
+    robot_variable_cost = mdl.sum(robot_sortie_by_id[sid]["cost"] * z[r, q, sid] for r in R for q in Q for sid in robot_sortie_ids)
     total_variable_cost = truck_variable_cost + drone_variable_cost + robot_variable_cost
-    # Fixed activation costs (Malik Table 3): per used truck, per selected
-    # drone sortie, per selected robot sortie. With the one-sortie-per-platform
-    # constraint, a selected sortie equals one platform deployment.
+    # Fixed activation costs (Malik Table 3): per used truck and per used
+    # platform. A platform used for several trips still activates once; with
+    # Q_MAX_TRIPS=1 this matches the legacy per-sortie charge exactly.
+    drone_used = mdl.binary_var_dict(D, name="drone_used")
+    robot_used = mdl.binary_var_dict(R, name="robot_used")
+    for d in D:
+        mdl.add_constraint(
+            drone_used[d] <= mdl.sum(y[d, q, sid] for q in Q for sid in drone_sortie_ids),
+            ctname=f"drone_used_upper_{d}",
+        )
+        for q in Q:
+            for sid in drone_sortie_ids:
+                mdl.add_constraint(drone_used[d] >= y[d, q, sid], ctname=f"drone_used_lower_{d}_{q}_{sid}")
+    for r in R:
+        mdl.add_constraint(
+            robot_used[r] <= mdl.sum(z[r, q, sid] for q in Q for sid in robot_sortie_ids),
+            ctname=f"robot_used_upper_{r}",
+        )
+        for q in Q:
+            for sid in robot_sortie_ids:
+                mdl.add_constraint(robot_used[r] >= z[r, q, sid], ctname=f"robot_used_lower_{r}_{q}_{sid}")
     truck_fixed_cost = f_t * mdl.sum(used_truck[v] for v in T)
-    drone_fixed_cost = f_d * mdl.sum(y[d, sid] for d in D for sid in drone_sortie_ids)
-    robot_fixed_cost = f_r * mdl.sum(z[r, sid] for r in R for sid in robot_sortie_ids)
+    drone_fixed_cost = f_d * mdl.sum(drone_used[d] for d in D)
+    robot_fixed_cost = f_r * mdl.sum(robot_used[r] for r in R)
     total_fixed_cost = truck_fixed_cost + drone_fixed_cost + robot_fixed_cost
     operating_cost = total_variable_cost + total_fixed_cost
-    # Capacity and endurance are hard constraints (endurance is additionally
-    # enforced at candidate generation), so they carry no soft penalty terms.
-    # Only route-duration and time-window violations are penalized.
+    # Relaxed penalized objective (friend's Eq.12 style):
+    #   P = ALPHA * OpCost + (1-ALPHA) * Gamma + Pen_Q + Pen_E + Pen_T + Pen_W
+    # Penalties sit outside the alpha blend (they are already in cost units).
+    capacity_penalty = lambda_Q * mdl.sum(cap_excess_t[v] for v in T)
+    endurance_penalty = lambda_E_drone * mdl.sum(end_excess_d[d, q] for d in D for q in Q) + lambda_E_robot * mdl.sum(
+        end_excess_r[r, q] for r in R for q in Q
+    )
     route_duration_penalty = lambda_T * route_late_global
     time_window_penalty = lambda_W * (mdl.sum(late_t[i] for i in C) + mdl.sum(late_d[i] for i in C) + mdl.sum(late_r[i] for i in C))
-    total_penalty = route_duration_penalty + time_window_penalty
-    # Objective matches the PDF formulation (P = Z + penalty terms, Eq. 12):
-    # operating cost plus route-duration and time-window penalties.
-    objective = operating_cost + total_penalty
+    total_penalty = capacity_penalty + endurance_penalty + route_duration_penalty + time_window_penalty
+    # Makespan Gamma: latest completion over used trucks and platform trips.
+    makespan = mdl.continuous_var(lb=0, name="makespan_gamma")
+    for v in T:
+        mdl.add_constraint(makespan >= a_t[v, end_depot] - big_m * (1 - used_truck[v]), ctname=f"makespan_truck_{v}")
+    for d, q, sid in y:
+        row = drone_sortie_by_id[sid]
+        last = int(row["sequence"][-1])
+        mdl.add_constraint(
+            makespan >= a_d[last] + float(service_time.get(last, 0.0)) - big_m * (1 - y[d, q, sid]),
+            ctname=f"makespan_drone_{d}_{q}_{sid}",
+        )
+    for r, q, sid in z:
+        row = robot_sortie_by_id[sid]
+        last = int(row["sequence"][-1])
+        mdl.add_constraint(
+            makespan >= a_r[last] + float(service_time.get(last, 0.0)) - big_m * (1 - z[r, q, sid]),
+            ctname=f"makespan_robot_{r}_{q}_{sid}",
+        )
+    # Objective: VRP-DR cost--makespan scalarization plus Eq.12-style penalties.
+    # alpha=1 with RELAXED_OBJECTIVE=0 reproduces the legacy strict model.
+    objective = alpha * operating_cost + (1.0 - alpha) * makespan + total_penalty
     mdl.minimize(objective)
 
     kpi_exprs = {
         "Objective": objective,
         "Operating Cost": operating_cost,
+        "Alpha": alpha,
+        "Makespan": makespan,
+        "Capacity Penalty": capacity_penalty,
+        "Capacity Excess Kg": mdl.sum(cap_excess_t[v] for v in T),
+        "Endurance Penalty": endurance_penalty,
+        "Drone Energy Excess Wh": mdl.sum(end_excess_d[d, q] for d in D for q in Q),
+        "Robot Energy Excess Wh": mdl.sum(end_excess_r[r, q] for r in R for q in Q),
         "Route Duration Penalty": route_duration_penalty,
         "Route Duration Excess": route_late_global,
         "Time Window Penalty": time_window_penalty,
@@ -1323,7 +1689,7 @@ def main() -> int:
             A_set=A_set,
             start_depot=start_depot,
             end_depot=end_depot,
-            demand=q,
+            demand=dem,
             truck_capacity=Q_t,
             truck_time=truck_time,
             open_time=open_time,
@@ -1380,6 +1746,7 @@ def main() -> int:
         service_time,
         open_time,
         close_time,
+        truck_ready_vars=dep_t,
     )
     selected_robot, robot_audit_rows = audit_selected_ordered_sorties(
         selected_robot,
@@ -1392,6 +1759,7 @@ def main() -> int:
         service_time,
         open_time,
         close_time,
+        truck_ready_vars=dep_t,
     )
     sortie_timing_audit = pd.concat([drone_audit_rows, robot_audit_rows], ignore_index=True)
     platform_node_timing = pd.concat(
@@ -1579,7 +1947,17 @@ def main() -> int:
     kpi_rows.extend({"kpi": name, "value": value_or_zero(solution, expr)} for name, expr in kpi_exprs.items())
 
     operational_result = {
-        "model_version": "ordered_multi_customer_sorties",
+        "model_version": "relaxed_multi_trip_ordered_sorties_charging",
+        "relaxed_objective": int(RELAXED_OBJECTIVE),
+        "strict_mode": int(not RELAXED_OBJECTIVE),
+        "q_max_trips": Q_MAX_TRIPS,
+        "alpha": alpha,
+        "allow_cyclic": int(allow_cyclic),
+        "lambda_Q": lambda_Q,
+        "lambda_E_drone": lambda_E_drone,
+        "lambda_E_robot": lambda_E_robot,
+        "lambda_T": lambda_T,
+        "lambda_W": lambda_W,
         "solve_status": solve_status,
         "objective": objective_value,
         "truck_arcs": len(selected_truck),
@@ -1592,9 +1970,58 @@ def main() -> int:
         "feasible_robot_sequences": len(robot_sorties),
         "reported_makespan_hr": reported_makespan_hr,
         "route_duration_excess": value_or_zero(solution, route_late_global),
+        "capacity_excess_kg": value_or_zero(solution, mdl.sum(cap_excess_t[v] for v in T)),
+        "drone_energy_excess_wh": value_or_zero(solution, mdl.sum(end_excess_d[d, q] for d in D for q in Q)),
+        "robot_energy_excess_wh": value_or_zero(solution, mdl.sum(end_excess_r[r, q] for r in R for q in Q)),
         "total_penalty": value_or_zero(solution, total_penalty),
         "runtime": runtime,
     }
+
+    # Battery & charging audit: per-platform-trip battery level, charge, and
+    # energy. In strict mode the excess columns are zero by construction.
+    # Launch/recovery instants only exist for multi-trip runs.
+    multi_trip = len(Q) > 1
+    battery_rows = []
+    for d in D:
+        for q in Q:
+            battery_rows.append(
+                {
+                    "platform": "drone",
+                    "vehicle": d,
+                    "trip": q,
+                    "battery_start_wh": value_or_zero(solution, b_d[d, q]),
+                    "energy_consumed_wh": value_or_zero(solution, trip_energy_d[d, q]),
+                    "charge_added_wh": value_or_zero(solution, c_d[d, q]) if multi_trip and q in Q[:-1] else 0.0,
+                    "energy_excess_wh": value_or_zero(solution, end_excess_d[d, q]),
+                    "launch_time_hr": value_or_zero(solution, lt_d[d, q]) if multi_trip else 0.0,
+                    "recovery_time_hr": value_or_zero(solution, rt_d[d, q]) if multi_trip else 0.0,
+                    "trip_used": int(value_or_zero(solution, mdl.sum(y[d, q, sid] for sid in drone_sortie_ids)) > 0.5),
+                }
+            )
+    for r in R:
+        for q in Q:
+            battery_rows.append(
+                {
+                    "platform": "robot",
+                    "vehicle": r,
+                    "trip": q,
+                    "battery_start_wh": value_or_zero(solution, b_r[r, q]),
+                    "energy_consumed_wh": value_or_zero(solution, trip_energy_r[r, q]),
+                    "charge_added_wh": value_or_zero(solution, c_r[r, q]) if multi_trip and q in Q[:-1] else 0.0,
+                    "energy_excess_wh": value_or_zero(solution, end_excess_r[r, q]),
+                    "launch_time_hr": value_or_zero(solution, lt_r[r, q]) if multi_trip else 0.0,
+                    "recovery_time_hr": value_or_zero(solution, rt_r[r, q]) if multi_trip else 0.0,
+                    "trip_used": int(value_or_zero(solution, mdl.sum(z[r, q, sid] for sid in robot_sortie_ids)) > 0.5),
+                }
+            )
+    battery_df = pd.DataFrame(
+        battery_rows,
+        columns=[
+            "platform", "vehicle", "trip", "trip_used", "battery_start_wh",
+            "energy_consumed_wh", "charge_added_wh", "energy_excess_wh",
+            "launch_time_hr", "recovery_time_hr",
+        ],
+    )
     write_notes(big_m, operational_result)
 
     parameter_rows: list[dict] = []
@@ -1618,6 +2045,7 @@ def main() -> int:
         pd.DataFrame(arrival_rows).to_excel(writer, sheet_name="Arrival Times", index=False)
         truck_physical_timing.to_excel(writer, sheet_name="Truck Physical Timing", index=False)
         penalties_df.to_excel(writer, sheet_name="Penalties", index=False)
+        battery_df.to_excel(writer, sheet_name="Battery & Charging", index=False)
         customers.to_excel(writer, sheet_name="Input Customers", index=False)
         arcs.to_excel(writer, sheet_name="Input Arcs", index=False)
         pd.DataFrame(parameter_rows).to_excel(writer, sheet_name="Parameters", index=False)

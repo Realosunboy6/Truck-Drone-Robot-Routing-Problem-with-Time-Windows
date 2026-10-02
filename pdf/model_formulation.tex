@@ -6,7 +6,7 @@
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
-\usepackage{microtype}
+\usepackage[expansion=false]{microtype}
 \usepackage{underscore}
 \usepackage{enumitem}
 \usepackage{hyperref}
@@ -15,20 +15,33 @@
 \setlength{\tabcolsep}{4pt}
 \renewcommand{\arraystretch}{1.15}
 
-\title{Capped Flexible-Docking Ordered-Sortie MILP\\
-\large Formulation, Written to Match the Implementation}
+\title{Relaxed Multi-Trip Truck--Drone--Robot MILP with En-Route Charging\\
+\large Formulation Following VRP-DR (Malik et al., arXiv:2505.23584),\\
+\large with the Relaxed Penalized Objective of the Original TDRP Formulation}
 \author{}
 \date{}
 
 \begin{document}
 \maketitle
 
-\noindent This document writes out the mixed-integer linear program (MILP) that is
-actually implemented in \texttt{model/capped\_flexible\_docking\_ordered\_sortie\_model.py}.
-It is not a transcription of the original PDF formulation. Every symbol, set, and
-constraint below corresponds to named variables, constraints, or helper blocks in the code, so the formulation can be checked against the source
-directly. Where this model departs from the original PDF formulation, that is
-called out explicitly in Section~\ref{sec:deviations}.
+\noindent This document writes out the mixed-integer linear program (MILP)
+implemented in \texttt{model/capped\_flexible\_docking\_ordered\_sortie\_model.py},
+restructured to follow the mathematical format of the VRP-DR paper
+(Malik et al., ``Collaborative Last-Mile Delivery: A Multi-Platform Vehicle
+Routing Problem With En-route Charging,'' arXiv:2505.23584) and the relaxed
+penalized objective of the original truck--drone--robot formulation (Eq.~12 of
+the TDRP paper). Every symbol, set, and constraint corresponds to named
+variables, constraints, or helper blocks in the code (items marked
+\emph{new} are specified here and land in the code with the phased migration
+described below), so the formulation can be checked against the source
+directly.
+
+\paragraph{Implementation status.} The migration from the previous strict
+single-trip model proceeds in phases: (1)~cyclic-sortie timing fix
+(\texttt{dep\_t} ready times); (2)~relaxed objective with excess variables,
+$\Gamma$ makespan, and $\alpha$ blend; (3)~energy-per-sortie filter;
+(4)~trip-indexed multi-trip; (5)~full battery/charging variables. Until a phase
+lands, the corresponding \emph{new} items are specification, not code.
 
 \section{Sets and Indices}
 \label{sec:sets}
@@ -42,41 +55,79 @@ $C = \{1,\dots,n\}$ & Customers. $n = |C|$. \\
 $P = \{0, n+1\}$ & Depots: $0$ is the start depot, $n+1$ is the end depot. \\
 $V$ & $V = \{0,1,\dots,n+1\} = C \cup P$: all nodes. \\
 $A \subseteq V \times V$ & Directed arc set (from \texttt{arcs.csv}); $(i,j)\in A$ means a truck may travel directly from $i$ to $j$. \\
+$A^+ = A \cup \{(i,i):i\in V\}$ & Leg set for sortie enumeration, extended with self-loops for \emph{cyclic} sorties (Section~\ref{sec:sorties}). \\
 $T = \{1,\dots,|T|\}$ & Trucks, $|T| = \texttt{NUM\_TRUCKS}$. \\
 $D = \{1,\dots,|D|\}$ & Drones, after lossless fleet trimming (Section~\ref{sec:trimming}). \\
 $R = \{1,\dots,|R|\}$ & Robots, after lossless fleet trimming. \\
+$Q = \{1,\dots,Q_{\max}\}$ & Trip indices: each physical drone/robot may fly up to $Q_{\max}$ sorties (multi-trip). \\
 $S^d$ & Set of candidate ordered drone sorties (Section~\ref{sec:sorties}). \\
 $S^r$ & Set of candidate ordered robot sorties. \\
 \bottomrule
 \end{longtable}
 }
 
+\section{VRP-DR Feature Map}
+\label{sec:features}
+
+The five distinguishing features of VRP-DR are adopted as follows
+($\checkmark$ = formulated in this document):
+
+{\small
+\begin{longtable}{@{}p{0.22\textwidth}p{0.60\textwidth}c@{}}
+\toprule
+VRP-DR feature & Where it lives in this formulation & \\
+\midrule
+Multi-visit service & Ordered sorties serve up to \texttt{MAX\_CUSTOMERS\_PER\_SORTIE} customers (Section~\ref{sec:sorties}) & $\checkmark$ \\
+Multi-trip operations & Trip-indexed platforms $(d,q)$ with inter-trip sequencing (Sections~\ref{sec:variables}, \ref{sec:multitrip}) & $\checkmark$ \\
+Flexible docking & Independent launch/recovery truck assignment $h^L \ne h^R$ (Section~\ref{sec:sync}) & $\checkmark$ \\
+Cyclic and acyclic operations & Self-loop legs $(i,i)\in A^+$ plus truck ready times $\mathrm{dep}^t$ (Sections~\ref{sec:sorties}, \ref{sec:truck-time}) & $\checkmark$ \\
+En-route charging & Per-sortie energy $e(s)$, battery $b_{p,q}$, charging $c_{p,q}$ during truck aboard time (Section~\ref{sec:charging}) & $\checkmark$ \\
+\bottomrule
+\end{longtable}
+}
+
+\noindent In addition, the objective carries the VRP-DR cost--makespan blend
+$\alpha\cdot\mathrm{OpCost} + (1-\alpha)\,\Gamma$
+(Section~\ref{sec:objective}), and the hard capacity/endurance constraints of
+the previous model are relaxed into the penalized form of the original TDRP
+formulation's Eq.~12 (Sections~\ref{sec:rel-cap}, \ref{sec:rel-end}).
+
 \section{Ordered Sortie Candidates}
 \label{sec:sorties}
 
-Before the MILP is built, \texttt{generate\_ordered\_sorties} enumerates, for every
-arc $(i,k)\in A$ and every ordered subsequence of customers of length
+Before the MILP is built, \texttt{generate\_ordered\_sorties} enumerates, for
+every leg $(i,k)\in A^+$ and every ordered subsequence of customers of length
 $1,\dots,\texttt{MAX\_CUSTOMERS\_PER\_SORTIE}$, a candidate \emph{ordered sortie}
 $s$ with:
 
 \begin{itemize}
-\item launch node $\iota(s) = i$, recovery node $\kappa(s) = k$;
+\item launch node $\iota(s) = i$, recovery node $\kappa(s) = k$ (with $i=k$
+allowed: a \emph{cyclic} sortie);
 \item ordered customer sequence $\sigma(s) = (\sigma_1(s),\dots,\sigma_{m(s)}(s))$, $\sigma_l(s)\in C$;
-\item payload $q(s) = \sum_{c\,\in\,\sigma(s)} q_c$, kept only if $q(s) \le$ platform capacity;
-\item travel distance $\delta(s) = \sum_{(u,v)\,\in\,\mathrm{edges}(s)} \mathrm{dist}_{uv}$ (drone: \texttt{distance\_matrix}; robot: \texttt{robot\_distance\_matrix}), kept only if $\delta(s) \le$ platform endurance;
+\item payload $q(s) = \sum_{c\,\in\,\sigma(s)} q_c$, kept only if $q(s) \le$ platform capacity (hard, faithful to Eq.~3 of the original formulation);
+\item travel distance $\delta(s) = \sum_{(u,v)\,\in\,\mathrm{edges}(s)} \mathrm{dist}_{uv}$ (drone: \texttt{distance\_matrix}; robot: \texttt{robot\_distance\_matrix});
 \item duration $\tau(s) = \sum_{(u,v)\,\in\,\mathrm{edges}(s)} \mathrm{time}_{uv}$;
-\item cost $\gamma(s) = \sum_{(u,v)\,\in\,\mathrm{edges}(s)} \mathrm{cost}_{uv}$,
+\item cost $\gamma(s) = \sum_{(u,v)\,\in\,\mathrm{edges}(s)} \mathrm{cost}_{uv}$;
+\item \textbf{energy} $e(s) = \big(a_p + b_p\,q(s)\big)\,\delta(s)$ in Wh, with platform energy coefficients $(a_p,b_p)$ (Section~\ref{sec:parameters}). Because the sequence and per-leg payloads are known at enumeration time, energy is precomputed exactly as VRP-DR's payload-dependent drone formula requires, but no energy nonlinearity ever enters the MILP.
 \end{itemize}
 
 \noindent where
 \[
 \mathrm{edges}(s) = \big((\iota(s),\sigma_1(s)),(\sigma_1(s),\sigma_2(s)),\dots,(\sigma_{m(s)}(s),\kappa(s))\big).
 \]
-For each $(i,k)\in A$, only the
-\texttt{TOP\_SORTIES\_PER\_TRUCK\_LEG} candidates with the most customers (ties
-broken by lowest cost, then duration) are kept. $S^d$ uses drone time/distance
-matrices and $(Q_d, E_d)$; $S^r$ uses robot time/distance matrices and $(Q_r,
-E_r)$.
+For a cyclic leg $(i,i)$, $\mathrm{edges}(s)$ is the genuine cycle
+$i \to \sigma_1 \to \cdots \to \sigma_m \to i$.
+For each leg, only the \texttt{TOP\_SORTIES\_PER\_TRUCK\_LEG} candidates with
+the most customers (ties broken by lowest cost, then duration) are kept.
+$S^d$ uses drone time/distance matrices and $(Q_d, B_d)$; $S^r$ uses robot
+time/distance matrices and $(Q_r, B_r)$.
+
+\paragraph{Generation filters (relaxed model).} Because endurance violations are
+now \emph{priced} rather than forbidden, generation keeps sorties with
+$e(s) \le E_{\mathrm{slack}}\cdot B_p$ ($E_{\mathrm{slack}}\ge 1$, default $1.5$),
+so the $\lambda_E$ penalties have candidates to price. The legacy distance caps
+$E_d, E_r$ remain as documented non-binding sanity caps. Sorties with
+$e(s) > B_p$ are still discarded only when $E_{\mathrm{slack}} = 1$.
 
 Therefore, an ``integer optimal solution'' from the solver is optimal over the
 retained capped candidate-sortie sets $S^d$ and $S^r$. It is not a proof of
@@ -101,21 +152,38 @@ $\mathrm{dt}_{ij}$ & Drone travel time, $i,j\in V$ (\texttt{drone\_time\_matrix}
 $\mathrm{rdist}_{ij}$ & Robot travel distance, $i,j\in V$ (\texttt{robot\_distance\_matrix}). \\
 $\mathrm{rt}_{ij}$ & Robot travel time, $i,j\in V$ (\texttt{robot\_time\_matrix}). \\
 $Q_t, Q_d, Q_r$ & Truck / drone / robot payload capacity. \\
-$E_d, E_r$ & Drone / robot endurance, as a maximum route distance per sortie. \\
-$T_{\max}$ & Route-duration limit (10 h in the TDRP-TW data). \\
+$B_d, B_r$ & Usable battery capacity, drone / robot (Wh). Defaults: $B_d = 2000$ (derived: reproduces the 40~km Sacramento range at 45~Wh/km and 90\% DoD), $B_r = 1260$ (Starship Gen~3 spec). \\
+$a_d, b_d$ & Drone energy coefficients (Wh/km): $e = (a_d + b_d\,q)\,\delta$; defaults $(30, 3)$, i.e.\ 45~Wh/km at 5~kg. \\
+$a_r, b_r$ & Robot energy coefficients (Wh/km); defaults $(12, 0.6)$, i.e.\ 18~Wh/km at 10~kg. \\
+$r^c_d, r^c_r$ & En-route charging rates, drone / robot (W). Defaults $1000$ / $400$ (truck-side electrical limits). \\
+$Q_{\max}$ & Maximum trips per physical drone/robot (\emph{new}; suggest $2$--$3$). \\
+$\tau_{\mathrm{turn}}$ & Minimum turnaround time between consecutive trips of one platform (\emph{new}; $0$ if charging models it). \\
+$E_{\mathrm{slack}}$ & Endurance slack at sortie generation, $\ge 1$ (\emph{new}; default $1.5$). \\
+$T_{\max}$ & Route-duration limit (8 h in the real-world DeKalb data). \\
 $C_w, C_{veh}$ & Truck time-cost and distance-cost coefficients. \\
-$C^d_w, C_{drone}$ & Drone time-cost and distance-cost coefficients (\texttt{C\_w\_drone}, \texttt{C\_drone}); these are explicit in the processed cases, with code fallbacks only for backward compatibility. \\
-$C^r_w, C_{rob}$ & Robot time-cost and distance-cost coefficients (\texttt{C\_w\_r}, \texttt{C\_rob}). \\
-$f_t, f_d, f_r$ & Fixed activation cost per used truck / selected drone sortie / selected robot sortie (\texttt{truck\_fixed\_cost}, \texttt{drone\_fixed\_cost}, \texttt{robot\_fixed\_cost}; values $30, 10, 8$ from Malik et al., VRP-DR, arXiv:2505.23584, Table 3). \\
+$C^d_w, C_{drone}$ & Drone time-cost and distance-cost coefficients. \\
+$C^r_w, C_{rob}$ & Robot time-cost and distance-cost coefficients. \\
+$f_t, f_d, f_r$ & Fixed activation cost per used truck / selected drone sortie / selected robot sortie (values $30, 10, 8$ from Malik et al., VRP-DR, Table~3). \\
+$\alpha\in[0,1]$ & Weight on operating cost vs.\ makespan in the objective (\emph{new}; VRP-DR uses $0.5$). \\
+$\lambda_Q$ & Penalty per kg of truck capacity excess (\emph{new}; suggest $10$--$20$). \\
+$\lambda^d_E, \lambda^r_E$ & Penalty per Wh of drone/robot battery excess (\emph{new}; suggest $5$--$10$ per km-equivalent). \\
 $\lambda_T, \lambda_W$ & Penalty weights for route-duration excess and time-window lateness. \\
-$\mu^{dep}_d$ & Drones a used truck may launch from the depot (\texttt{DRONES\_CARRIED\_AT\_DEPOT}). \\
-$\mu^{trk}_d$ & Distinct drones a single truck may use (\texttt{MAX\_DRONES\_PER\_TRUCK}). \\
-$\mu^{dep}_r$ & Robots a used truck may launch from the depot (\texttt{ROBOTS\_CARRIED\_AT\_DEPOT}). \\
-$\mu^{trk}_r$ & Distinct robots a single truck may use (\texttt{MAX\_ROBOTS\_PER\_TRUCK}). \\
+$\mu^{dep}_d$ & Drones a used truck may launch from the depot. \\
+$\mu^{trk}_d$ & Distinct drones a single truck may use. \\
+$\mu^{dep}_r$ & Robots a used truck may launch from the depot. \\
+$\mu^{trk}_r$ & Distinct robots a single truck may use. \\
 $M$ & Big-M, $M = \max(T_{\max},\ 10\cdot|V|\cdot\max(\mathrm{tt},\mathrm{dt},\mathrm{rt}),\ 10000)$. \\
 \bottomrule
 \end{longtable}
 }
+
+\paragraph{Penalty scaling.} Each $\lambda$ must exceed the maximum marginal
+operating-cost saving from one unit of violation (exact-penalty theory) but not
+by orders of magnitude: with $\lambda_T = 1000$ against a $\sim$\$68 solution,
+$0.07$ units of violation swamp the entire objective (observed: route-duration
+penalty reached $\sim$97\% of the objective before the per-instance $T_{\max}$
+repair). Suggested starting values are in the table; calibrate per instance
+family.
 
 \subsection{Travel-cost coefficients}
 
@@ -130,9 +198,10 @@ $M$ & Big-M, $M = \max(T_{\max},\ 10\cdot|V|\cdot\max(\mathrm{tt},\mathrm{dt},\m
 $\mathrm{edges}(s)$.
 
 \section{Decision Variables}
+\label{sec:variables}
 
 {\small
-\begin{longtable}{@{}p{0.13\textwidth}p{0.17\textwidth}p{0.66\textwidth}@{}}
+\begin{longtable}{@{}p{0.15\textwidth}p{0.20\textwidth}p{0.61\textwidth}@{}}
 \toprule
 Symbol & Code name & Meaning \\
 \midrule
@@ -140,193 +209,254 @@ $x_{v,i,j}\in\{0,1\}$ & \texttt{x[v,i,j]} & Truck $v$ traverses arc $(i,j)\in A$
 $\eta_v\in\{0,1\}$ & \texttt{used\_truck[v]} & Truck $v$ is used. \\
 $\mathrm{vis}_{v,i}\in\{0,1\}$ & \texttt{visit[v,i]} & Truck $v$ visits customer $i\in C$. \\
 $u_{v,i}\in[0,n]$ & \texttt{u[v,i]} & MTZ rank of customer $i$ on truck $v$'s route. \\
-$y_{d,s}\in\{0,1\}$ & \texttt{y[d,sid]} & Drone $d$ flies ordered sortie $s\in S^d$. \\
-$h^L_{v,d,s}\in\{0,1\}$ & \texttt{h\_launch[v,d,sid]} & Truck $v$ launches drone $d$ for sortie $s$. \\
-$h^R_{v,d,s}\in\{0,1\}$ & \texttt{h\_recover[v,d,sid]} & Truck $v$ recovers drone $d$ for sortie $s$. \\
-$\xi_{v,d}\in\{0,1\}$ & \texttt{drone\_truck[v,d]} & Drone $d$ interacts with truck $v$ (launch and/or recovery). \\
-$z_{r,s}\in\{0,1\}$ & \texttt{z[r,sid]} & Robot $r$ performs ordered sortie $s\in S^r$. \\
-$g^L_{v,r,s}\in\{0,1\}$ & \texttt{g\_launch[v,r,sid]} & Truck $v$ launches robot $r$ for sortie $s$. \\
-$g^R_{v,r,s}\in\{0,1\}$ & \texttt{g\_recover[v,r,sid]} & Truck $v$ recovers robot $r$ for sortie $s$. \\
-$\zeta_{v,r}\in\{0,1\}$ & \texttt{robot\_truck[v,r]} & Robot $r$ interacts with truck $v$. \\
+$y_{d,q,s}\in\{0,1\}$ & \emph{new} & Drone $d$ flies ordered sortie $s\in S^d$ as its $q$-th trip. \\
+$\eta^d_d\in\{0,1\}$ & \emph{new} & Drone $d$ is used (at least one trip). \\
+$h^L_{v,d,q,s}\in\{0,1\}$ & \emph{new} & Truck $v$ launches drone $d$'s $q$-th trip (sortie $s$). \\
+$h^R_{v,d,q,s}\in\{0,1\}$ & \emph{new} & Truck $v$ recovers drone $d$'s $q$-th trip (sortie $s$). \\
+$\xi_{v,d}\in\{0,1\}$ & \texttt{drone\_truck[v,d]} & Drone $d$ interacts with truck $v$ (launch and/or recovery, any trip). \\
+$z_{r,q,s}\in\{0,1\}$ & \emph{new} & Robot $r$ performs ordered sortie $s\in S^r$ as its $q$-th trip. \\
+$\eta^r_r\in\{0,1\}$ & \emph{new} & Robot $r$ is used (at least one trip). \\
+$g^L_{v,r,q,s}\in\{0,1\}$ & \emph{new} & Truck $v$ launches robot $r$'s $q$-th trip. \\
+$g^R_{v,r,q,s}\in\{0,1\}$ & \emph{new} & Truck $v$ recovers robot $r$'s $q$-th trip. \\
+$\zeta_{v,r}\in\{0,1\}$ & \texttt{robot\_truck[v,r]} & Robot $r$ interacts with truck $v$ (any trip). \\
+$\mathrm{lt}^d_{d,q}\ge 0$ & \emph{new} & Launch time of drone $d$'s $q$-th trip. \\
+$\mathrm{rt}^d_{d,q}\ge 0$ & \emph{new} & Recovery (finish) time of drone $d$'s $q$-th trip. \\
+$\mathrm{lt}^r_{r,q}\ge 0$ & \emph{new} & Launch time of robot $r$'s $q$-th trip. \\
+$\mathrm{rt}^r_{r,q}\ge 0$ & \emph{new} & Recovery time of robot $r$'s $q$-th trip. \\
+$b^d_{d,q}\ge 0$ & \emph{new} & Drone $d$ battery at the start of trip $q$ (Wh). \\
+$c^d_{d,q}\ge 0$ & \emph{new} & Energy charged to drone $d$ between trips $q$ and $q+1$ (Wh). \\
+$b^r_{r,q}\ge 0$ & \emph{new} & Robot $r$ battery at the start of trip $q$ (Wh). \\
+$c^r_{r,q}\ge 0$ & \emph{new} & Energy charged to robot $r$ between trips $q$ and $q+1$ (Wh). \\
 $a^t_{v,i}\ge 0$ & \texttt{a\_t[v,i]} & Arrival time of truck $v$ at node $i\in V$. \\
+$\mathrm{dep}^t_{v,i}\ge 0$ & \emph{new} & Ready (departure) time of truck $v$ at node $i\in V$; the truck may wait for returning platforms. \\
 $a^d_i\ge 0$ & \texttt{a\_d[i]} & Drone arrival time at node $i\in V$. \\
 $a^r_i\ge 0$ & \texttt{a\_r[i]} & Robot arrival time at node $i\in V$. \\
 $\ell^t_i\ge 0$ & \texttt{late\_t[i]} & Truck time-window lateness at customer $i\in C$. \\
 $\ell^d_i\ge 0$ & \texttt{late\_d[i]} & Drone time-window lateness at customer $i\in C$. \\
 $\ell^r_i\ge 0$ & \texttt{late\_r[i]} & Robot time-window lateness at customer $i\in C$. \\
+$\varepsilon^Q_v\ge 0$ & \emph{new} & Truck $v$ capacity excess (kg). \\
+$\varepsilon^{Ed}_{d,q}\ge 0$ & \emph{new} & Drone $d$ battery excess on trip $q$ (Wh). \\
+$\varepsilon^{Er}_{r,q}\ge 0$ & \emph{new} & Robot $r$ battery excess on trip $q$ (Wh). \\
 $\rho^t_v\ge 0$ & \texttt{route\_late\_t[v]} & Route-duration excess of truck $v$ over $T_{\max}$. \\
-$\rho^*\ge 0$ & \texttt{route\_late\_global} & Global route-duration excess (objective uses this). \\
+$\rho^*\ge 0$ & \texttt{route\_late\_global} & Global route-duration excess. \\
+$\Gamma\ge 0$ & \emph{new} & Makespan: latest completion time over all trucks and platform trips. \\
 \bottomrule
 \end{longtable}
 }
 
-\subsection{Derived service indicators}
+\subsection{Derived service and trip-use indicators}
 
 \begin{align}
 \sigma^t_i &= \sum_{v\in T} \mathrm{vis}_{v,i}, & i\in C \label{eq:truck-service}\\
-\sigma^d_j &= \sum_{d\in D}\sum_{\substack{s\in S^d\\ j\,\in\,\sigma(s)}} y_{d,s}, & j\in C \label{eq:drone-service}\\
-\sigma^r_j &= \sum_{r\in R}\sum_{\substack{s\in S^r\\ j\,\in\,\sigma(s)}} z_{r,s}, & j\in C \label{eq:robot-service}
+\sigma^d_j &= \sum_{d\in D}\sum_{q\in Q}\sum_{\substack{s\in S^d\\ j\,\in\,\sigma(s)}} y_{d,q,s}, & j\in C \label{eq:drone-service}\\
+\sigma^r_j &= \sum_{r\in R}\sum_{q\in Q}\sum_{\substack{s\in S^r\\ j\,\in\,\sigma(s)}} z_{r,q,s}, & j\in C \label{eq:robot-service}\\
+\mathrm{used}^d_{d,q} &= \sum_{s\in S^d} y_{d,q,s}\ \le 1, & d\in D,\ q\in Q \label{eq:used-drone-trip}\\
+\mathrm{used}^r_{r,q} &= \sum_{s\in S^r} z_{r,q,s}\ \le 1, & r\in R,\ q\in Q \label{eq:used-robot-trip}
 \end{align}
 
-\noindent\emph{Code:} \texttt{truck\_service}, \texttt{drone\_service}, \texttt{robot\_service}.
+\noindent $\mathrm{used}^d_{d,q}$ ($\mathrm{used}^r_{r,q}$) is a linear
+expression, not a new variable: it is $1$ iff drone $d$ (robot $r$) flies a
+$q$-th trip.
 
 \section{Objective Function}
+\label{sec:objective}
 
 \subsection{Variable (distance/time) cost}
 \begin{align}
 \mathrm{VarCost}^t &= \sum_{v\in T}\sum_{(i,j)\in A} \mathrm{tcost}_{ij}\,x_{v,i,j} \label{eq:varcost-truck}\\
-\mathrm{VarCost}^d &= \sum_{d\in D}\sum_{s\in S^d} \gamma(s)\,y_{d,s} \label{eq:varcost-drone}\\
-\mathrm{VarCost}^r &= \sum_{r\in R}\sum_{s\in S^r} \gamma(s)\,z_{r,s} \label{eq:varcost-robot}\\
+\mathrm{VarCost}^d &= \sum_{d\in D}\sum_{q\in Q}\sum_{s\in S^d} \gamma(s)\,y_{d,q,s} \label{eq:varcost-drone}\\
+\mathrm{VarCost}^r &= \sum_{r\in R}\sum_{q\in Q}\sum_{s\in S^r} \gamma(s)\,z_{r,q,s} \label{eq:varcost-robot}\\
 \mathrm{VarCost} &= \mathrm{VarCost}^t + \mathrm{VarCost}^d + \mathrm{VarCost}^r \label{eq:varcost-total}
 \end{align}
 
 \subsection{Fixed activation cost}
 \begin{align}
 \mathrm{FixCost}^t &= f_t \sum_{v\in T} \eta_v \label{eq:fixcost-truck}\\
-\mathrm{FixCost}^d &= f_d \sum_{d\in D}\sum_{s\in S^d} y_{d,s} \label{eq:fixcost-drone}\\
-\mathrm{FixCost}^r &= f_r \sum_{r\in R}\sum_{s\in S^r} z_{r,s} \label{eq:fixcost-robot}\\
+\mathrm{FixCost}^d &= f_d \sum_{d\in D} \eta^d_d \label{eq:fixcost-drone}\\
+\mathrm{FixCost}^r &= f_r \sum_{r\in R} \eta^r_r \label{eq:fixcost-robot}\\
 \mathrm{FixCost} &= \mathrm{FixCost}^t + \mathrm{FixCost}^d + \mathrm{FixCost}^r \label{eq:fixcost-total}
 \end{align}
+where $\eta^d_d \ge y_{d,q,s}$ for all $q,s$ and
+$\eta^d_d \le \sum_{q\in Q}\sum_{s\in S^d} y_{d,q,s}$
+(robot analogues for $\eta^r_r$), so $\eta^d_d = 1$ iff drone $d$ flies at
+least one trip.
 
-\subsection{Operating cost and penalties}
+\noindent Fixed platform cost is per \emph{used platform} (Malik et al.,
+VRP-DR, Table~3): a platform flying several trips still activates once. With
+$Q_{\max}=1$ this coincides with the legacy per-sortie charge.
+
+\subsection{Operating cost, makespan blend, and penalties}
 \begin{align}
 \mathrm{OpCost} &= \mathrm{VarCost} + \mathrm{FixCost} \label{eq:opcost}\\
+\mathrm{Pen}_Q &= \lambda_Q \sum_{v\in T} \varepsilon^Q_v \label{eq:pen-cap}\\
+\mathrm{Pen}_E &= \lambda^d_E \sum_{d,q} \varepsilon^{Ed}_{d,q}
+               + \lambda^r_E \sum_{r,q} \varepsilon^{Er}_{r,q} \label{eq:pen-end}\\
 \mathrm{Pen}_T &= \lambda_T\, \rho^* \label{eq:pen-route}\\
 \mathrm{Pen}_W &= \lambda_W \left(\sum_{i\in C}\ell^t_i + \sum_{i\in C}\ell^d_i + \sum_{i\in C}\ell^r_i\right) \label{eq:pen-tw}\\
-\mathrm{TotalPen} &= \mathrm{Pen}_T + \mathrm{Pen}_W \label{eq:totalpen}
+\mathrm{TotalPen} &= \mathrm{Pen}_Q + \mathrm{Pen}_E + \mathrm{Pen}_T + \mathrm{Pen}_W \label{eq:totalpen}
 \end{align}
 
 \subsection{Objective}
 \begin{align}
-\min\quad Z = \mathrm{OpCost} + \mathrm{TotalPen} \label{eq:objective}
+\min\quad P = \alpha\cdot\mathrm{OpCost} + (1-\alpha)\,\Gamma + \mathrm{TotalPen} \label{eq:objective}
 \end{align}
 
-\noindent\emph{Code:} the objective and KPI expression block. Capacity and endurance are hard constraints
-(Sections~\ref{sec:capacity}--\ref{sec:endurance}) and carry no penalty term; only
-route-duration excess and time-window lateness are penalized.
+\noindent This is the original TDRP formulation's penalized objective
+(Eq.~12: operating cost plus $\lambda_Q, \lambda^d_E, \lambda^r_E, \lambda_T,
+\lambda_W$ violation prices) with the VRP-DR cost--makespan scalarization
+$\alpha\cdot\mathrm{OpCost} + (1-\alpha)\,\Gamma$ in place of pure operating
+cost. Penalties sit \emph{outside} the $\alpha$ blend: they are already in cost
+units, so feasibility pricing must not vanish as $\alpha\to 0$.
+With $\alpha = 1$, $\Gamma$ dropped, and
+$\lambda_Q,\lambda^d_E,\lambda^r_E\to\infty$, \eqref{eq:objective} reproduces
+the previous strict model; the code exposes this via a
+\texttt{relaxed\_objective} flag so strict-optimal and relaxed-optimal results
+remain distinguishable in provenance.
 
 \section{Constraints}
+\label{sec:constraints}
 
 \subsection{Customer service (assignment)}
 \begin{align}
 \sigma^t_i + \sigma^d_i + \sigma^r_i = 1, \qquad i\in C \label{eq:service}
 \end{align}
-\noindent\emph{Code:} \texttt{customer\_service\_\{i\}}. Every customer is
-served exactly once, by exactly one of truck, drone, or robot.
+\noindent Every customer is served exactly once, by exactly one of truck,
+drone, or robot. Hard in both friend formulations.
 
-\subsection{Capacity (hard)}
-\label{sec:capacity}
+\subsection{Relaxed truck capacity}
+\label{sec:rel-cap}
 \begin{align}
-\sum_{i\in C} q_i\, \mathrm{vis}_{v,i} &\le Q_t, & v\in T \label{eq:cap-truck}\\
-q(s)\, y_{d,s} &\le Q_d, & d\in D,\ s\in S^d \label{eq:cap-drone}\\
-q(s)\, z_{r,s} &\le Q_r, & r\in R,\ s\in S^r \label{eq:cap-robot}
+\varepsilon^Q_v &\ge \sum_{i\in C} q_i\, \mathrm{vis}_{v,i} - Q_t, & v\in T \label{eq:cap-truck-soft}\\
+\varepsilon^Q_v &\ge 0, & v\in T \label{eq:cap-truck-nonneg}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{truck\_capacity\_\{v\}},
-\texttt{drone\_capacity\_\{d\}\_\{sid\}}, \texttt{robot\_capacity\_\{r\}\_\{sid\}}.\par}
+\noindent The hard truck-capacity constraint is replaced by the excess variable
+$\varepsilon^Q_v$ priced at $\lambda_Q$ in \eqref{eq:pen-cap} --- the
+$\lambda_Q$ term of the original formulation's Eq.~12.
 
-\subsection{Endurance (hard)}
-\label{sec:endurance}
+\subsection{Drone/robot per-sortie payload (hard)}
 \begin{align}
-\delta(s)\, y_{d,s} &\le E_d, & d\in D,\ s\in S^d \label{eq:end-drone}\\
-\delta(s)\, z_{r,s} &\le E_r, & r\in R,\ s\in S^r \label{eq:end-robot}
+q(s)\, y_{d,q,s} &\le Q_d, & d\in D,\ q\in Q,\ s\in S^d \label{eq:cap-drone}\\
+q(s)\, z_{r,q,s} &\le Q_r, & r\in R,\ q\in Q,\ s\in S^r \label{eq:cap-robot}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{drone\_endurance\_\{d\}\_\{sid\}},
-\texttt{robot\_endurance\_\{r\}\_\{sid\}}. Candidate generation
-(Section~\ref{sec:sorties}) already excludes any sortie with $\delta(s) > E_d$ (or
-$E_r$); these constraints restate the limit explicitly in the MILP.\par}
+\noindent Stays hard: the original formulation's Eq.~3 states these as hard
+conditionals ($q_j \le Q_d$ if served by drone), not penalized terms, and
+generation already enforces them. Relaxing them buys nothing.
+
+\subsection{Relaxed energy/endurance}
+\label{sec:rel-end}
+For every $d\in D$, $q\in Q$ (robot analogues for $r\in R$):
+\begin{align}
+\varepsilon^{Ed}_{d,q} &\ge \sum_{s\in S^d} e(s)\,y_{d,q,s} - b^d_{d,q}, \label{eq:end-drone-soft}\\
+\varepsilon^{Ed}_{d,q} &\ge 0 \label{eq:end-drone-nonneg}
+\end{align}
+\noindent The hard distance-endurance constraints are replaced by per-trip
+battery-excess variables priced at $\lambda^d_E, \lambda^r_E$ in
+\eqref{eq:pen-end} --- the $\lambda^d_E, \lambda^r_E$ terms of Eq.~12, now in
+energy units and charged against the trip's battery level $b^d_{d,q}$
+(Section~\ref{sec:charging}), not the nameplate capacity. Energy binds
+for the drone ($B_d$ sized to the 40~km range); for the robot the battery is
+$\sim$5$\times$ oversized for 12~km sorties, so $\varepsilon^{Er}$ is
+structurally near-zero at our scale. With $Q_{\max}=1$,
+$b^d_{d,1} = B_d$ and \eqref{eq:end-drone-soft} collapses to the single-trip
+priced excess over nameplate capacity.
 
 \subsection{Drone sortie--truck assignment and synchronization}
-\label{sec:drone-sync}
-For every $d\in D$, $s\in S^d$:
+\label{sec:sync}
+For every $d\in D$, $q\in Q$, $s\in S^d$:
 \begin{align}
-\sum_{v\in T} h^L_{v,d,s} &= y_{d,s} \label{eq:drone-launch-assign}\\
-\sum_{v\in T} h^R_{v,d,s} &= y_{d,s} \label{eq:drone-recover-assign}
+\sum_{v\in T} h^L_{v,d,q,s} &= y_{d,q,s} \label{eq:drone-launch-assign}\\
+\sum_{v\in T} h^R_{v,d,q,s} &= y_{d,q,s} \label{eq:drone-recover-assign}
 \end{align}
 and for every $v\in T$:
 \begin{align}
-h^L_{v,d,s} &\le
+h^L_{v,d,q,s} &\le
 \begin{cases}
 \eta_v, & \iota(s) = 0\\
 \mathrm{vis}_{v,\iota(s)}, & \iota(s)\in C\\
 0, & \text{otherwise}
 \end{cases} \label{eq:drone-launch-sync}\\
-h^R_{v,d,s} &\le
+h^R_{v,d,q,s} &\le
 \begin{cases}
 \eta_v, & \kappa(s) = n+1\\
 \mathrm{vis}_{v,\kappa(s)}, & \kappa(s)\in C\\
 0, & \text{otherwise}
 \end{cases} \label{eq:drone-recover-sync}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{assign\_selected\_drone\_sortie\_launch/recovery\_truck\_\{d\}\_\{sid\}}, \texttt{sync\_drone\_launch/recover\_*}. A selected sortie
-must have exactly one launch truck and one recovery truck, and that truck must
-physically be at the launch/recovery node (depot use $\eta_v$; customer nodes use
-$\mathrm{vis}_{v,\cdot}$). The launch and recovery truck need not be the same
-truck. The ``otherwise'' branch is a defensive bound that is never active for the
-node sets produced by the data (launch/recovery nodes are always $0$, $n+1$, or in
-$C$).\par}
+\noindent A selected trip must have exactly one launch truck and one recovery
+truck, and that truck must physically be at the launch/recovery node. Launch
+and recovery trucks are independent (flexible docking); with $q$ indexed, trip
+$q$ may recover to truck $w_1$ at $k_1$ while trip $q+1$ launches from truck
+$w_2$ at $i_2$. The robot analogues use $g^L, g^R, z$.
 
-\subsection{Physical-platform consistency}
+\subsection{Multi-trip sequencing}
+\label{sec:multitrip}
+For every $d\in D$ and $q \in \{1,\dots,Q_{\max}-1\}$:
 \begin{align}
-\sum_{s\in S^d} y_{d,s} &\le 1, & d\in D \label{eq:one-sortie-drone}\\
-\sum_{s\in S^r} z_{r,s} &\le 1, & r\in R \label{eq:one-sortie-robot}
+\mathrm{used}^d_{d,q+1} &\le \mathrm{used}^d_{d,q} \label{eq:trip-order-drone}\\
+\mathrm{lt}^d_{d,q+1} &\ge \mathrm{rt}^d_{d,q} + \tau_{\mathrm{turn}}
+  - M\,\big(2 - \mathrm{used}^d_{d,q} - \mathrm{used}^d_{d,q+1}\big) \label{eq:trip-seq-drone}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{one\_sortie\_per\_drone\_\{d\}},
-\texttt{one\_sortie\_per\_robot\_\{r\}}. Each physical drone/robot flies
-at most one sortie, so no inter-sortie sequencing is needed.\par}
+and the robot analogues for $r\in R$. Trip $q+1$ may only launch after trip
+$q$ has been recovered (plus turnaround), whenever both trips are flown.
+Per-trip launch/recovery times link to trucks and sorties in
+Section~\ref{sec:sortie-time}:
+\begin{align}
+\mathrm{lt}^d_{d,q} &\ge a^t_{v,\iota(s)} + \mathrm{dt}_{\iota(s),\sigma_1(s)}
+  - M\,(1-h^L_{v,d,q,s}), & \forall\,v,\,(d,q,s) \label{eq:trip-launch-time}\\
+\mathrm{rt}^d_{d,q} &\ge a^d_{\sigma_m(s)} + \theta_{\sigma_m(s)}
+  + \mathrm{dt}_{\sigma_m(s),\kappa(s)} - M\,(1-y_{d,q,s}), & \forall\,(d,q,s) \label{eq:trip-recover-time}
+\end{align}
+\noindent \eqref{eq:trip-order-drone} canonically orders trips within a
+platform (eliminating trip-permutation symmetry). The per-customer arrival
+chain $a^d_i$ is reused because each customer is served exactly once, so
+$a^d_{\sigma_m(s)}$ is well-defined regardless of which trip serves it.
 
-\subsection{Truck--platform pairing limits}
-For every $v\in T$:
+\subsection{Battery and en-route charging}
+\label{sec:charging}
+For every $d\in D$ and $q \in \{1,\dots,Q_{\max}-1\}$ (robot analogues for
+$r\in R$):
 \begin{align}
-\sum_{d\in D} \xi_{v,d} &\le \mu^{trk}_d\,\eta_v \label{eq:drone-truck-cap}\\
-\sum_{s\in S^d}\big(h^L_{v,d,s} + h^R_{v,d,s}\big) &\le 2\,\xi_{v,d}, & d\in D \label{eq:drone-truck-upper}\\
-\xi_{v,d} &\le \sum_{s\in S^d}\big(h^L_{v,d,s} + h^R_{v,d,s}\big), & d\in D \label{eq:drone-truck-lower}\\[4pt]
-\sum_{r\in R} \zeta_{v,r} &\le \mu^{trk}_r\,\eta_v \label{eq:robot-truck-cap}\\
-\sum_{s\in S^r}\big(g^L_{v,r,s} + g^R_{v,r,s}\big) &\le 2\,\zeta_{v,r}, & r\in R \label{eq:robot-truck-upper}\\
-\zeta_{v,r} &\le \sum_{s\in S^r}\big(g^L_{v,r,s} + g^R_{v,r,s}\big), & r\in R \label{eq:robot-truck-lower}
+b^d_{d,1} &= B_d \label{eq:batt-start}\\
+b^d_{d,q+1} &= b^d_{d,q} - \sum_{s\in S^d} e(s)\,y_{d,q,s} + c^d_{d,q} \label{eq:batt-inventory}\\
+0 \le b^d_{d,q} &\le B_d \label{eq:batt-bounds}\\
+c^d_{d,q} &\le r^c_d\,\big(\mathrm{lt}^d_{d,q+1} - \mathrm{rt}^d_{d,q}\big) \label{eq:charge-rate}\\
+c^d_{d,q} &\le B_d\,\mathrm{used}^d_{d,q+1} \label{eq:charge-purpose}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{max\_distinct\_drones\_assigned\_to\_truck\_\{v\}},
-\texttt{drone\_truck\_pair\_upper/lower\_\{v\}\_\{d\}}, and the robot
-analogues. $\xi_{v,d}=1$ iff drone $d$ launches and/or is recovered by
-truck $v$ at least once (at most one launch and one recovery total, by
-\eqref{eq:one-sortie-drone}, hence the coefficient $2$).\par}
+\noindent \eqref{eq:batt-start}--\eqref{eq:batt-bounds} are the battery
+inventory (cf.\ VRP-DR Eqs.~30--33, 41--42); the lower bound enforces ``cannot
+spend uncharged energy'' through \eqref{eq:batt-inventory}.
+\eqref{eq:charge-rate} caps charged energy by the charging rate times the
+\emph{aboard time} $\mathrm{lt}^d_{d,q+1} - \mathrm{rt}^d_{d,q}$ --- the
+interval between recovery and next launch, during which the platform is by
+construction aboard the truck (cf.\ VRP-DR Eqs.~38--40; their ``charging time
+$\le$ truck leg time'' is automatic here because aboard time is
+truck-synchronized). \eqref{eq:charge-purpose} forbids charging into the void.
+With $Q_{\max}=1$, \eqref{eq:batt-start}--\eqref{eq:charge-purpose} are vacuous
+and \eqref{eq:end-drone-soft} prices the single trip's excess over the
+nameplate battery. \emph{Modeling note:} under flexible docking, if
+trip $q+1$ launches from a different truck than trip $q$'s recovery truck, the
+platform must transfer trucks mid-gap; charging should then accrue only on the
+truck-carried sub-intervals. The code requires same-truck consecutive trips
+unless a truck--truck rendezvous is modeled.
 
-\subsection{Launch/recovery node capacity limits}
-For every $v\in T$ and every node $w\in V$ that is a launch node of some
-$s\in S^d$:
+\subsection{Truck timing with ready times (cyclic-ready)}
+\label{sec:truck-time}
 \begin{align}
-\sum_{d\in D}\sum_{\substack{s\in S^d\\ \iota(s)=w}} h^L_{v,d,s} \le
-\begin{cases}
-\mu^{dep}_d\,\eta_v, & w = 0\\
-\mu^{trk}_d\,\mathrm{vis}_{v,w}, & w\ne 0
-\end{cases} \label{eq:drone-launch-limit}
+a^t_{v,0} &= 0, & v\in T \label{eq:truck-start-time}\\
+\mathrm{dep}^t_{v,i} &\ge a^t_{v,i} + \theta_i, & v\in T,\ i\in C \label{eq:truck-ready-cust}\\
+\mathrm{dep}^t_{v,i} &\ge a^t_{v,i}, & v\in T,\ i\in P \label{eq:truck-ready-depot}\\
+a^t_{v,j} &\ge \mathrm{dep}^t_{v,i} + \mathrm{tt}_{ij} - M\,(1-x_{v,i,j}), & v\in T,\ (i,j)\in A \label{eq:truck-time-propagation}\\
+a^t_{v,i} &\ge e_i - M\,(1-\mathrm{vis}_{v,i}), & v\in T,\ i\in C \label{eq:truck-open}\\
+\ell^t_i &\ge a^t_{v,i} - \bar{e}_i - M\,(1-\mathrm{vis}_{v,i}), & v\in T,\ i\in C \label{eq:truck-late}
 \end{align}
-and for every recovery node $w\in V$ that is a recovery node of some $s\in S^d$:
-\begin{align}
-\sum_{d\in D}\sum_{\substack{s\in S^d\\ \kappa(s)=w}} h^R_{v,d,s} \le
-\begin{cases}
-\mu^{trk}_d\,\eta_v, & w = n+1\\
-\mu^{trk}_d\,\mathrm{vis}_{v,w}, & w\in C
-\end{cases} \label{eq:drone-recovery-limit}
-\end{align}
-\noindent with the symmetric pair for robots using $g^L, g^R, \mu^{dep}_r,
-\mu^{trk}_r$.
-
-{\footnotesize\noindent\emph{Code:}
-\begin{itemize}[topsep=2pt,itemsep=1pt]
-\item \texttt{depot\_drone\_launch\_limit\_\{v\}} / \texttt{node\_drone\_launch\_limit\_\{v\}\_\{launch\}};
-\item \texttt{depot\_drone\_recovery\_limit\_\{v\}} / \texttt{node\_drone\_recovery\_limit\_\{v\}\_\{recover\}};
-\item robot analogues.
-\end{itemize}\par}
-
-\subsection{Symmetry breaking}
-\begin{align}
-\sum_{s\in S^d} y_{d+1,s} &\le \sum_{s\in S^d} y_{d,s}, & d\in\{1,\dots,|D|-1\} \label{eq:sym-drone}\\
-\sum_{s\in S^r} z_{r+1,s} &\le \sum_{s\in S^r} z_{r,s}, & r\in\{1,\dots,|R|-1\} \label{eq:sym-robot}
-\end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{symmetry\_drone\_\{d\_prev\}\_\{d\_next\}},
-\texttt{symmetry\_robot\_\{r\_prev\}\_\{r\_next\}}. Platforms of the same
-type are identical and each flies at most one sortie, so platform $d+1$ may be used
-only if platform $d$ is already used.\par}
+\noindent $\mathrm{dep}^t_{v,i}$ is the truck's \emph{ready (departure) time} at
+node $i$: arrival plus service, plus any waiting for returning platforms.
+Separating arrival $a^t_{v,i}$ from availability $\mathrm{dep}^t_{v,i}$ is what
+makes \emph{cyclic} sorties feasible --- with launch node $=$ recovery node,
+the old form $a^t_{v,i} \ge a^t_{v,i} + \text{duration}$ was infeasible for any
+positive-duration sortie; now the truck simply waits,
+$\mathrm{dep}^t_{v,i} \ge a^t_{v,i} + \text{duration}$. For acyclic sorties the
+behavior is unchanged (waiting becomes explicit rather than implicit).
 
 \subsection{Drone and robot time windows}
 \label{sec:drone-robot-tw}
@@ -339,10 +469,6 @@ a^r_i &\ge e_i\, \sigma^r_i, & i\in C \label{eq:open-robot}\\
 a^d_i &\le \bar{e}_i + \ell^d_i + M\,(1-\sigma^d_i), & i\in C \label{eq:tw-drone}\\
 a^r_i &\le \bar{e}_i + \ell^r_i + M\,(1-\sigma^r_i), & i\in C \label{eq:tw-robot}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{start\_time\_d}, \texttt{start\_time\_r},
-\texttt{open\_drone\_\{i\}}, \texttt{open\_robot\_\{i\}}, \texttt{late\_drone\_def\_\{i\}},
-\texttt{late\_robot\_def\_\{i\}}, \texttt{time\_window\_drone\_\{i\}},
-\texttt{time\_window\_robot\_\{i\}}.\par}
 
 \paragraph{Reporting note.} For a customer $i$ with $\sigma^d_i=0$,
 \eqref{eq:open-drone} reduces to $a^d_i\ge 0$ and, since $\lambda_W$ drives
@@ -352,28 +478,28 @@ bound of $[0,\bar{e}_i]$ with no physical meaning. The Arrival Times sheet flags
 rows as \texttt{not\_served\_value\_arbitrary} (same for $a^r_i$).
 
 \subsection{Ordered sortie timing}
-For $d\in D$, $s\in S^d$ with sequence $\sigma(s)=(\sigma_1,\dots,\sigma_m)$,
+\label{sec:sortie-time}
+For $d\in D$, $q\in Q$, $s\in S^d$ with sequence $\sigma(s)=(\sigma_1,\dots,\sigma_m)$,
 launch node $\iota(s)$, recovery node $\kappa(s)$, and for every $v\in T$:
 \begin{align}
-a^d_{\sigma_1} &\ge a^t_{v,\iota(s)} + \mathrm{dt}_{\iota(s),\sigma_1} - M\,(1-h^L_{v,d,s}) \label{eq:sortie-drone-launch}\\
-a^t_{v,\kappa(s)} &\ge a^d_{\sigma_m} + \theta_{\sigma_m} + \mathrm{dt}_{\sigma_m,\kappa(s)} - M\,(1-h^R_{v,d,s}) \label{eq:sortie-drone-recover}
+a^d_{\sigma_1} &\ge a^t_{v,\iota(s)} + \mathrm{dt}_{\iota(s),\sigma_1} - M\,(1-h^L_{v,d,q,s}) \label{eq:sortie-drone-launch}\\
+\mathrm{dep}^t_{v,\kappa(s)} &\ge a^d_{\sigma_m} + \theta_{\sigma_m} + \mathrm{dt}_{\sigma_m,\kappa(s)} - M\,(1-h^R_{v,d,q,s}) \label{eq:sortie-drone-recover}
 \end{align}
 and for every consecutive pair $(\sigma_l,\sigma_{l+1})$ in the sequence:
 \begin{align}
-a^d_{\sigma_{l+1}} &\ge a^d_{\sigma_l} + \theta_{\sigma_l} + \mathrm{dt}_{\sigma_l,\sigma_{l+1}} - M\,(1-y_{d,s}) \label{eq:sortie-drone-seq}
+a^d_{\sigma_{l+1}} &\ge a^d_{\sigma_l} + \theta_{\sigma_l} + \mathrm{dt}_{\sigma_l,\sigma_{l+1}} - M\,(1-y_{d,q,s}) \label{eq:sortie-drone-seq}
 \end{align}
 The robot analogues replace $a^d, h^L, h^R, y, \mathrm{dt}$ with $a^r, g^L, g^R, z,
 \mathrm{rt}$:
 \begin{align}
-a^r_{\sigma_1} &\ge a^t_{v,\iota(s)} + \mathrm{rt}_{\iota(s),\sigma_1} - M\,(1-g^L_{v,r,s}) \label{eq:sortie-robot-launch}\\
-a^t_{v,\kappa(s)} &\ge a^r_{\sigma_m} + \theta_{\sigma_m} + \mathrm{rt}_{\sigma_m,\kappa(s)} - M\,(1-g^R_{v,r,s}) \label{eq:sortie-robot-recover}\\
-a^r_{\sigma_{l+1}} &\ge a^r_{\sigma_l} + \theta_{\sigma_l} + \mathrm{rt}_{\sigma_l,\sigma_{l+1}} - M\,(1-z_{r,s}) \label{eq:sortie-robot-seq}
+a^r_{\sigma_1} &\ge a^t_{v,\iota(s)} + \mathrm{rt}_{\iota(s),\sigma_1} - M\,(1-g^L_{v,r,q,s}) \label{eq:sortie-robot-launch}\\
+\mathrm{dep}^t_{v,\kappa(s)} &\ge a^r_{\sigma_m} + \theta_{\sigma_m} + \mathrm{rt}_{\sigma_m,\kappa(s)} - M\,(1-g^R_{v,r,q,s}) \label{eq:sortie-robot-recover}\\
+a^r_{\sigma_{l+1}} &\ge a^r_{\sigma_l} + \theta_{\sigma_l} + \mathrm{rt}_{\sigma_l,\sigma_{l+1}} - M\,(1-z_{r,q,s}) \label{eq:sortie-robot-seq}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{sortie\_time\_drone\_launch/recover/seq\_*};
-\texttt{sortie\_time\_robot\_launch/recover/seq\_*}. If a sortie $s$ is
-selected ($y_{d,s}=1$ or $z_{r,s}=1$), the platform's timeline runs from the launch
-truck's arrival at $\iota(s)$, through the ordered sequence with service times,
-to no later than the recovery truck's arrival at $\kappa(s)$.\par}
+\noindent Recovery constrains the truck's \emph{ready time}
+$\mathrm{dep}^t_{v,\kappa(s)}$, not its arrival: the recovery truck waits for
+the platform before departing. A late platform therefore propagates into that
+truck's $a^t_{v,n+1}$ and hence into $\rho^t_v$, $\rho^*$, and $\Gamma$.
 
 \subsection{Truck routing completeness}
 \label{sec:routing}
@@ -390,40 +516,15 @@ For every $v\in T,\ i\in C$:
 \begin{align}
 \mathrm{vis}_{v,i} &= \sum_{h:(h,i)\in A} x_{v,h,i} \label{eq:visit-def}
 \end{align}
-For every $i \in C$:
-\begin{align}
-\sigma^t_i &= \sum_{v\in T} \mathrm{vis}_{v,i} \label{eq:truck-service-restated}
-\end{align}
 For every $v\in T$:
 \begin{align}
 \sum_{i\in C} \mathrm{vis}_{v,i} &\le n\,\eta_v \label{eq:used-upper}\\
 \eta_v &\le \sum_{i\in C} \mathrm{vis}_{v,i} \label{eq:used-lower}\\
 x_{v,i,j} &\le \eta_v, & (i,j)\in A \label{eq:arc-activation}
 \end{align}
-{\footnotesize\noindent\emph{Code:}
-\begin{itemize}[topsep=2pt,itemsep=1pt]
-\item \texttt{op\_depot\_departure\_\{v\}} / \texttt{op\_depot\_return\_\{v\}};
-\item \texttt{op\_flow\_\{v\}\_\{node\}};
-\item \texttt{op\_visit\_inbound\_\{v\}\_\{i\}};
-\item \texttt{op\_truck\_service\_visit\_\{i\}};
-\item \texttt{op\_used\_visit\_activation\_\{v\}} / \texttt{op\_used\_requires\_service\_\{v\}} / \texttt{op\_arc\_activation\_\{v\}\_\{i\}\_\{j\}}.
-\end{itemize}
-These constraints are not written explicitly in the original PDF, which
-defines $x_{v,i,j}$ but not full route-continuity; they are the standard
-constraints needed for $x$ to form valid physical truck routes.\par}
-
-\subsection{Truck timing and time windows}
-\begin{align}
-a^t_{v,0} &= 0, & v\in T \label{eq:truck-start-time}\\
-a^t_{v,j} &\ge a^t_{v,i} + \theta_i\,[i\in C] + \mathrm{tt}_{ij} - M\,(1-x_{v,i,j}), & v\in T,\ (i,j)\in A \label{eq:truck-time-propagation}\\
-a^t_{v,i} &\ge e_i - M\,(1-\mathrm{vis}_{v,i}), & v\in T,\ i\in C \label{eq:truck-open}\\
-\ell^t_i &\ge a^t_{v,i} - \bar{e}_i - M\,(1-\mathrm{vis}_{v,i}), & v\in T,\ i\in C \label{eq:truck-late}
-\end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{op\_start\_time\_truck\_\{v\}},
-\texttt{op\_time\_propagation\_\{v\}\_\{i\}\_\{j\}},
-\texttt{op\_open\_truck\_\{v\}\_\{i\}} / \texttt{op\_late\_truck\_\{v\}\_\{i\}}. Here $[i\in C]$ is $1$ if $i\in C$ (so $\theta_i$ is added) and $0$ if
-$i\in P$ (depots have no service time). Every used truck departs the start depot at
-clock time $0$.\par}
+\noindent These constraints are not written explicitly in either friend
+formulation, which defines $x_{v,i,j}$ but not full route-continuity; they are
+the standard constraints needed for $x$ to form valid physical truck routes.
 
 \subsection{Route-duration constraints}
 For every $v\in T$:
@@ -433,24 +534,22 @@ a^t_{v,n+1} &\le T_{\max} + \rho^t_v + M\,(1-\eta_v) \label{eq:route-late-bound}
 \rho^t_v &\le M\,\eta_v \label{eq:route-late-activation}\\
 \rho^t_v &\le \rho^* + M\,(1-\eta_v) \label{eq:route-late-global-bound}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{op\_route\_duration\_late\_truck\_\{v\}},
-\texttt{op\_route\_duration\_truck\_\{v\}},
-\texttt{op\_route\_duration\_late\_truck\_activation\_\{v\}},
-\texttt{op\_route\_duration\_late\_truck\_global\_bound\_\{v\}}.
-Because every truck departs at time $0$ (\eqref{eq:truck-start-time}), $a^t_{v,n+1}$
-\emph{is} that truck's route duration. $\rho^*$ is forced, by
-\eqref{eq:route-late-activation}--\eqref{eq:route-late-global-bound} together with
-the objective minimizing $\lambda_T\rho^*$, to equal $\max_{v\in T,\,\eta_v=1}
-\rho^t_v$, i.e. the worst per-truck route-duration excess over $T_{\max}$.\par}
+\noindent Because every truck departs at time $0$ (\eqref{eq:truck-start-time}),
+$a^t_{v,n+1}$ \emph{is} that truck's route duration. $\rho^*$ is forced, by
+\eqref{eq:route-late-activation}--\eqref{eq:route-late-global-bound} together
+with the objective minimizing $\lambda_T\rho^*$, to equal $\max_{v\in
+T,\,\eta_v=1} \rho^t_v$, i.e.\ the worst per-truck route-duration excess over
+$T_{\max}$.
 
 \paragraph{Relation to drone/robot routes.} The original PDF writes the
 route-duration condition for $m\in\{t,d,r\}$ (trucks, drones, robots
 separately). This implementation enforces it only through the truck end-depot
 arrival $a^t_{v,n+1}$. A drone/robot finishing a sortie late forces its recovery
 truck to wait (via \eqref{eq:sortie-drone-recover}/\eqref{eq:sortie-robot-recover}),
-which propagates into that truck's $a^t_{v,n+1}$ and hence into $\rho^t_v$ and
-$\rho^*$. So drone/robot lateness is captured indirectly through the truck term,
-not as a separate $a^d_{n+1}, a^r_{n+1}$ penalty. See Section~\ref{sec:deviations}.
+which propagates into that truck's $a^t_{v,n+1}$ and hence into $\rho^t_v$,
+$\rho^*$, and $\Gamma$. So drone/robot lateness is captured indirectly through
+the truck term, not as a separate $a^d_{n+1}, a^r_{n+1}$ penalty. See
+Section~\ref{sec:deviations}.
 
 \subsection{MTZ subtour elimination}
 For every $v\in T$:
@@ -459,10 +558,67 @@ u_{v,i} &\le n\,\mathrm{vis}_{v,i}, & i\in C \label{eq:mtz-upper}\\
 u_{v,i} &\ge \mathrm{vis}_{v,i}, & i\in C \label{eq:mtz-lower}\\
 u_{v,i} - u_{v,j} + n\,x_{v,i,j} &\le n-1, & i\ne j\in C,\ (i,j)\in A \label{eq:mtz}
 \end{align}
-{\footnotesize\noindent\emph{Code:} \texttt{op\_mtz\_visit\_upper/lower\_\{v\}\_\{i\}},
-\texttt{op\_mtz\_\{v\}\_\{i\}\_\{j\}}. Standard Miller--Tucker--Zemlin
-constraints; not in the PDF, needed to forbid customer-only subtours disconnected
-from the depot.\par}
+
+\subsection{Truck--platform pairing limits}
+For every $v\in T$:
+\begin{align}
+\sum_{d\in D} \xi_{v,d} &\le \mu^{trk}_d\,\eta_v \label{eq:drone-truck-cap}\\
+\sum_{q\in Q}\sum_{s\in S^d}\big(h^L_{v,d,q,s} + h^R_{v,d,q,s}\big) &\le 2Q_{\max}\,\xi_{v,d}, & d\in D \label{eq:drone-truck-upper}\\
+\xi_{v,d} &\le \sum_{q\in Q}\sum_{s\in S^d}\big(h^L_{v,d,q,s} + h^R_{v,d,q,s}\big), & d\in D \label{eq:drone-truck-lower}\\[4pt]
+\sum_{r\in R} \zeta_{v,r} &\le \mu^{trk}_r\,\eta_v \label{eq:robot-truck-cap}\\
+\sum_{q\in Q}\sum_{s\in S^r}\big(g^L_{v,r,q,s} + g^R_{v,r,q,s}\big) &\le 2Q_{\max}\,\zeta_{v,r}, & r\in R \label{eq:robot-truck-upper}\\
+\zeta_{v,r} &\le \sum_{q\in Q}\sum_{s\in S^r}\big(g^L_{v,r,q,s} + g^R_{v,r,q,s}\big), & r\in R \label{eq:robot-truck-lower}
+\end{align}
+\noindent The upper-bound coefficient is $2Q_{\max}$, not $2$: with up to
+$Q_{\max}$ trips per platform, a platform may launch and recover up to
+$Q_{\max}$ times each with one truck. $\xi_{v,d}$ ($\zeta_{v,r}$) still counts
+\emph{distinct} platforms per truck, so \eqref{eq:drone-truck-cap} semantics
+are unchanged.
+
+\subsection{Launch/recovery node capacity limits}
+For every $v\in T$ and every node $w\in V$ that is a launch node of some
+$s\in S^d$:
+\begin{align}
+\sum_{d\in D}\sum_{q\in Q}\sum_{\substack{s\in S^d\\ \iota(s)=w}} h^L_{v,d,q,s} \le
+\begin{cases}
+\mu^{dep}_d\,\eta_v, & w = 0\\
+\mu^{trk}_d\,\mathrm{vis}_{v,w}, & w\ne 0
+\end{cases} \label{eq:drone-launch-limit}
+\end{align}
+and for every recovery node $w\in V$ that is a recovery node of some $s\in S^d$:
+\begin{align}
+\sum_{d\in D}\sum_{q\in Q}\sum_{\substack{s\in S^r\\ \kappa(s)=w}} h^R_{v,d,q,s} \le
+\begin{cases}
+\mu^{trk}_d\,\eta_v, & w = n+1\\
+\mu^{trk}_d\,\mathrm{vis}_{v,w}, & w\in C
+\end{cases} \label{eq:drone-recovery-limit}
+\end{align}
+\noindent with the symmetric pair for robots using $g^L, g^R, \mu^{dep}_r,
+\mu^{trk}_r$. A platform may now launch twice from one node on different
+trips; the sums count trips correctly.
+
+\subsection{Symmetry breaking}
+\begin{align}
+\mathrm{used}^d_{d,q+1} &\le \mathrm{used}^d_{d,q}, & d\in D,\ q<Q_{\max} \label{eq:sym-trip-drone}\\
+\sum_{q\in Q}\sum_{s\in S^d} y_{d+1,q,s} &\le \sum_{q\in Q}\sum_{s\in S^d} y_{d,q,s}, & d\in\{1,\dots,|D|-1\} \label{eq:sym-drone}\\
+\sum_{q\in Q}\sum_{s\in S^r} z_{r+1,q,s} &\le \sum_{q\in Q}\sum_{s\in S^r} z_{r,q,s}, & r\in\{1,\dots,|R|-1\} \label{eq:sym-robot}
+\end{align}
+\noindent \eqref{eq:sym-trip-drone} (same as \eqref{eq:trip-order-drone})
+canonically orders trips within a platform; \eqref{eq:sym-drone} generalizes
+the old platform ordering to total trip counts. Valid: platforms are identical
+and trips are canonically ordered within each platform, so sorting platforms
+by trip count descending loses nothing.
+
+\subsection{Makespan}
+\begin{align}
+\Gamma &\ge a^t_{v,n+1} - M\,(1-\eta_v), & v\in T \label{eq:makespan-truck}\\
+\Gamma &\ge \mathrm{rt}^d_{d,q} - M\,(1-\mathrm{used}^d_{d,q}), & d\in D,\ q\in Q \label{eq:makespan-drone}\\
+\Gamma &\ge \mathrm{rt}^r_{r,q} - M\,(1-\mathrm{used}^r_{r,q}), & r\in R,\ q\in Q \label{eq:makespan-robot}\\
+\Gamma &\ge 0 \label{eq:makespan-nonneg}
+\end{align}
+\noindent $\Gamma$ is the latest completion time over all used trucks and all
+flown platform trips. Unlike the previous model (makespan reported only), it
+is a decision variable entering the objective through \eqref{eq:objective}.
 
 \section{Lossless Fleet Trimming}
 \label{sec:trimming}
@@ -473,18 +629,20 @@ Before $D$ and $R$ are fixed, the raw fleet sizes from \texttt{parameters.json}
 |D| &= \max\big(1,\ \min(\mu^{trk}_d\cdot|T|,\ n)\big) \label{eq:trim-drone}\\
 |R| &= \max\big(1,\ \min(\mu^{trk}_r\cdot|T|,\ n)\big) \label{eq:trim-robot}
 \end{align}
-\noindent\emph{Code:} the fleet-trimming block. This is lossless: \eqref{eq:drone-truck-cap}
-already caps usable drones at $\mu^{trk}_d\cdot|T|$ per type, and
-\eqref{eq:one-sortie-drone} plus \eqref{eq:service} cap usable drones at $n$ (one
-sortie serves at least one customer, each customer served once), so any platform
-beyond $|D|$ (or $|R|$) is provably unused in every feasible solution.
+\noindent The lossless argument is unchanged under multi-trip:
+\eqref{eq:drone-truck-cap} caps distinct usable drones at
+$\mu^{trk}_d\cdot|T|$, and \eqref{eq:service} caps used platforms at $n$ (each
+used platform serves at least one customer across its trips; each customer is
+served once), so any platform beyond $|D|$ (or $|R|$) is provably unused in
+every feasible solution. Multi-trip changes the \emph{economics} (fewer
+platforms needed per customer), not the validity of the trim.
 
 \section{Time-Dependent Travel Times}
 \label{sec:td}
 
 The original PDF formulation assumes time-dependent travel times $t_{ij}(\tau)$.
 The MILP above is static: every timing constraint uses the free-flow matrix
-$\mathrm{tt}_{ij}$. The codebase now ships a time-dependent truck layer for
+$\mathrm{tt}_{ij}$. The codebase ships a time-dependent truck layer for
 a~posteriori evaluation of solutions under $t_{ij}(\tau)$ and for time-dependent
 heuristic route evaluation (\texttt{scripts/time\_dependent.py},
 \texttt{scripts/add\_td\_matrices.py}).
@@ -530,44 +688,98 @@ optimum as the baseline for optimality-gap measurement. Optimizing directly
 under time dependence would require a period-expanded MILP and is deliberately
 out of scope.
 
-\section{Deviations from the Original PDF Formulation}
+\section{Deviations from the Friend Formulations}
 \label{sec:deviations}
 
+This model now \emph{follows} the two friend formulations rather than
+deviating from them. Remaining differences:
+
 \begin{itemize}
-\item \textbf{Static optimization with time-dependent evaluation.} The PDF
-assumes $t_{ij}(\tau)$ throughout; this MILP optimizes static
+\item \textbf{Static optimization with time-dependent evaluation.} Both friend
+formulations assume $t_{ij}(\tau)$ throughout; this MILP optimizes static
 $\mathrm{tt}_{ij}$, while Section~\ref{sec:td} provides FIFO-safe
 time-dependent matrices for evaluating solutions and heuristics under
 $t_{ij}(\tau)$.
-\item \textbf{Endurance and capacity are hard constraints.} The PDF's Eq.~12
-penalizes endurance/capacity violations with $\lambda^d_E, \lambda^r_E, \lambda_Q$
-to allow \emph{heuristic exploration of infeasible solutions}. This MILP instead
-enforces \eqref{eq:cap-truck}--\eqref{eq:end-robot} as hard constraints (and
-additionally at sortie-generation time), so $\lambda^d_E, \lambda^r_E, \lambda_Q$
-are unused.
 \item \textbf{Route-duration penalty is truck-indexed only}, as discussed after
 \eqref{eq:route-late-global-bound}, rather than summed separately over
-$m\in\{t,d,r\}$ as in the PDF's Eq.~8/Eq.~12. Drone/robot lateness still affects
-$\rho^*$ indirectly through synchronization.
+$m\in\{t,d,r\}$ as in the original PDF's Eq.~8/Eq.~12. Drone/robot lateness
+still affects $\rho^*$ and $\Gamma$ indirectly through synchronization.
+\item \textbf{Energy replaces distance as the endurance primitive.}
+VRP-DR caps drone distance per sortie and models robot energy quadratically;
+here both platforms use the linear Wh/km energy $e(s)$ precomputed at
+generation, and the $\lambda_E$ penalties price Wh of battery excess. For our
+hardware the drone battery is sized exactly to its range (energy binds); the
+robot battery is $\sim$5$\times$ oversized, so robot charging is structurally
+minor at this scale.
+\item \textbf{Operational routing constraints}
+(\eqref{eq:depot-depart}--\eqref{eq:mtz}) are added because the friend
+formulations define $x_{v,i,j}$ but do not write full route-continuity
+constraints; without them $x$ does not necessarily form a connected truck
+route from depot to depot.
+\item \textbf{Strict-model compatibility.} The previous strict model (hard
+capacity/endurance, cost-only objective) is recovered exactly with $\alpha=1$,
+$\Gamma$ dropped, $E_{\mathrm{slack}}=1$, and
+$\lambda_Q,\lambda^d_E,\lambda^r_E\to\infty$; the code's
+\texttt{relaxed\_objective} flag selects between them. Proven-optimal results
+under the strict model (slice6: $67.1552$; slice8: $68.8452$) do \emph{not}
+transfer to the relaxed model, which has a strictly larger feasible region and
+must be re-solved for its own certificates.
 \item \textbf{Big-M, waiting penalty, and raw cost fields}
 (\texttt{big\_M}, \texttt{waiting\_penalty\_weight}, \texttt{truck\_variable\_cost},
 \texttt{drone\_departure\_cost}) from the raw TDRP-TW parameters are superseded:
-$M$ is computed internally (Section~\ref{sec:parameters}, parameter table), platform waiting is
+$M$ is computed internally (Section~\ref{sec:parameters}), platform waiting is
 reported via the Sortie Timing Audit rather than penalized, and travel costs use
 $C_{veh}/C_{drone}/C_{rob}$ with the fixed-cost terms \eqref{eq:fixcost-truck}--\eqref{eq:fixcost-robot}.
-\item \textbf{Operational routing constraints}
-(\eqref{eq:depot-depart}--\eqref{eq:mtz}) are added because the PDF defines
-$x_{v,i,j}$ but does not write full route-continuity constraints; without them
-$x$ does not necessarily form a connected truck route from depot to depot.
-\item \textbf{Makespan} is computed after solving from $a^t_{v,n+1}$ and platform
-finish times for reporting only. It is not a decision variable and is not part of
-$Z$, matching the PDF's objective structure $P_{\text{PDF}} = Z + \text{penalty terms}$
-(Eq.~12, where $P_{\text{PDF}}$ denotes the PDF's total-cost objective, not the depot
-set $P$ of Section~\ref{sec:sets}), which
-also does not include makespan in the objective.
 \end{itemize}
 
 A full parameter-by-parameter audit is in \texttt{parameter\_usage\_audit.csv} and
 the README's ``Parameter Usage Audit'' section.
+
+\appendix
+\section{Side-by-Side Comparison with the Friend Formulations}
+\label{sec:comparison}
+
+$\checkmark$ = aligned, $\approx$ = deviates (documented).
+
+{\small
+\begin{longtable}{@{}p{0.13\textwidth}p{0.35\textwidth}p{0.35\textwidth}c@{}}
+\toprule
+Aspect & Friend formulations & This implementation & Match \\
+\midrule
+Sortie size & Original: one customer per sortie; VRP-DR: multi-visit
+& Multi-customer ordered sorties; \texttt{MAX\_CUSTOMERS\_PER\_SORTIE}$=1$ reproduces the original
+& $\checkmark$ \\
+Multi-trip & VRP-DR: repeated dispatches per platform
+& Trip-indexed platforms $(d,q)$, $q\le Q_{\max}$, with inter-trip sequencing & $\checkmark$ \\
+Flexible docking & VRP-DR: independent launch/recovery trucks
+& $h^L\ne h^R$ ($g^L\ne g^R$) per trip; cross-truck trips allowed & $\checkmark$ \\
+Cyclic/acyclic & VRP-DR: both & Self-loop legs $(i,i)$ $+$ truck ready times $\mathrm{dep}^t$ & $\checkmark$ \\
+En-route charging & VRP-DR: battery + charging on truck
+& Per-sortie energy $e(s)$; battery $b_{p,q}$; charging $c_{p,q}$ during aboard time & $\checkmark$ \\
+Travel times & Time-dependent $t_{ij}(\tau)$ throughout
+& Static $\mathrm{tt}_{ij}$ in the MILP; TD matrices for evaluation (Section~\ref{sec:td})
+& $\approx$ \\
+Customer service & Each customer served exactly once & Same & $\checkmark$ \\
+Capacity & Original Eq.~12: constraints $+$ $\lambda_Q$ penalty
+& Excess $\varepsilon^Q_v$ $+$ $\lambda_Q$ penalty (relaxed); per-sortie payload hard & $\checkmark$ \\
+Endurance & Original Eq.~12: $\lambda^d_E,\lambda^r_E$ penalties; VRP-DR: energy model
+& Battery excess $\varepsilon^{Ed},\varepsilon^{Er}$ $+$ penalties; linear Wh/km energy & $\checkmark$ \\
+Synchronization & Sortie at nodes visited by \emph{any} truck
+& Sortie paired to a specific truck, plus launch/recovery node capacities
+& $\approx$ (stricter) \\
+Time windows & Soft: penalty if late & Soft: lateness variables $+$ $\lambda_W$ penalty & $\checkmark$ \\
+Route duration & Per mode $m\in\{t,d,r\}$: $a^{(m)}_{n+1}\le T_{\max}$
+& Worst-truck excess $\rho^*$ only; drone/robot lateness via synchronization
+& $\approx$ \\
+Objective & Original Eq.~12: operating cost $+$ 5 penalty terms; VRP-DR: $\alpha\cdot$cost $+$ $(1-\alpha)\cdot$makespan
+& $\alpha\cdot\mathrm{OpCost}+(1-\alpha)\Gamma+\mathrm{Pen}_Q+\mathrm{Pen}_E+\mathrm{Pen}_T+\mathrm{Pen}_W$ & $\checkmark$ \\
+Truck routing & $x_{v,i,j}$ defined; route continuity not written
+& Full flow conservation $+$ MTZ subtour elimination & $\approx$ (completed) \\
+Robot network & Distinct pedestrian network $G^{(r)}$ & Real OSM footpath/sidewalk network & $\checkmark$ \\
+Cost model & $C_{ij}(\tau)=t_{ij}(\tau)C_w+d_{ij}C_{veh}$
+& Same, plus fixed activation costs $f_t,f_d,f_r$ & $\checkmark$ \\
+\bottomrule
+\end{longtable}
+}
 
 \end{document}

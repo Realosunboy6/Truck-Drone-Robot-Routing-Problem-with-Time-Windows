@@ -9,3 +9,8 @@ results/final_30min/lp_models/tdrp_11_25_ordered_sorties_github_final_30min_3_10
 
 # osmnx download cache (transient, local only)
 cache/
+
+# LaTeX build artifacts (regenerable via pdflatex)
+*.aux
+*.log
+*.out
