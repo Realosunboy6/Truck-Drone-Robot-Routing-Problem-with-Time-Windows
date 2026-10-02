@@ -420,10 +420,14 @@ def build_instance(
     min_sep_km: float = 0.15,
     robot_engine: str = "valhalla",
     osm_pbf: str | Path | None = None,
+    time_periods: int = 0,
+    td_profile: str = "two_peak",
 ) -> None:
     rng = random.Random(seed)
     if robot_engine not in ("valhalla", "osrm-foot", "local"):
         raise ValueError(f"unknown robot_engine {robot_engine!r}")
+    if time_periods < 0:
+        raise ValueError("--time-periods must be >= 0")
 
     if bbox is not None:
         north, south, east, west = bbox
@@ -744,6 +748,38 @@ def build_instance(
     write_matrix(out_dir / "drone_time_matrix.csv", drone_time_matrix)
     write_matrix(out_dir / "robot_distance_matrix.csv", robot_distance_matrix)
     write_matrix(out_dir / "robot_time_matrix.csv", robot_time_matrix)
+
+    # Time-dependent truck layer (paper's t_ij(tau)): one travel-time matrix
+    # per departure period, computed by Ichoua-style speed-profile integration
+    # (FIFO-safe by construction). Robot/drone layers stay static.
+    if time_periods > 0:
+        try:
+            from time_dependent import (
+                discretize_profile,
+                period_travel_matrices,
+                profile_summary,
+                verify_fifo,
+            )
+        except ImportError:  # run as scripts/build_real_world_instance.py
+            from scripts.time_dependent import (
+                discretize_profile,
+                period_travel_matrices,
+                profile_summary,
+                verify_fifo,
+            )
+        import numpy as np
+
+        t_static = np.array(truck_time_matrix, dtype=float)
+        bounds, factors = discretize_profile(td_profile, time_periods, horizon=8.0)
+        td_matrices = period_travel_matrices(t_static, bounds, factors)
+        assert verify_fifo(td_matrices, bounds), "FIFO check failed on TD matrices"
+        for p, mat in enumerate(td_matrices):
+            write_matrix(out_dir / f"truck_time_matrix_p{p}.csv", mat.tolist())
+        td_info = profile_summary(td_profile, time_periods, horizon=8.0)
+        td_info["td_fifo_verified"] = True
+        params.update(td_info)
+        print(f"  wrote {time_periods} time-dependent truck matrices "
+              f"(profile={td_profile}, FIFO verified)")
     (out_dir / "parameters.json").write_text(json.dumps(params, indent=2), encoding="utf-8")
 
     summary = {
@@ -787,6 +823,12 @@ def main() -> int:
                              "(local = fully offline from a .osm.pbf via --osm-pbf)")
     parser.add_argument("--osm-pbf", default=None,
                         help="path to a .osm.pbf extract (required for --robot-engine local)")
+    parser.add_argument("--time-periods", type=int, default=0,
+                        help="number of departure-time periods for time-dependent truck "
+                             "travel times (0 = static only; paper's t_ij(tau))")
+    parser.add_argument("--td-profile", default="two_peak",
+                        help="speed-profile for --time-periods: two_peak, mild, or flat "
+                             "(see scripts/time_dependent.py)")
     args = parser.parse_args()
     if args.place is None and args.bbox is None:
         parser.error("one of --place or --bbox is required")
@@ -794,7 +836,8 @@ def main() -> int:
     depot_latlon = tuple(float(v) for v in args.depot_latlon.split(",")) if args.depot_latlon else None
     build_instance(args.place, bbox, args.n_customers, args.seed, args.out_dir, depot_latlon,
                    min_sep_km=args.min_sep_km, robot_engine=args.robot_engine,
-                   osm_pbf=args.osm_pbf)
+                   osm_pbf=args.osm_pbf, time_periods=args.time_periods,
+                   td_profile=args.td_profile)
     return 0
 
 

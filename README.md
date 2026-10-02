@@ -259,6 +259,40 @@ python -u scripts/build_real_world_instance.py \
 `data_processed/realworld_dekalb_il_300_slice6` (and `_slice8`) are small pilots cut from
 the 300 for solver experiments — see `scripts/slice_instance.py` and `docs/LAPTOP_SETUP.md`.
 
+### Time-dependent truck travel times (paper's t_ij(tau))
+
+`scripts/time_dependent.py` implements the Ichoua–Gendreau–Semet (2003)
+speed-profile construction: the working day is split into P departure periods,
+each with a speed factor relative to free-flow speed; travel times are computed
+by *integrating speeds* through period boundaries, so the FIFO property holds by
+construction (asserted via `verify_fifo` on every build and recorded in
+`parameters.json` with the profile, period bounds, factors, and citations).
+Magnitudes follow Figliozzi (2012)'s 2.5:1 max slowdown bound. Robot (no public
+pedestrian-congestion data) and drone (uncongested airspace) layers stay static.
+The exact MILP remains the static free-flow baseline for gap measurement;
+heuristics consume t_ij(tau) directly by looking up the departure period.
+
+Three profiles: `two_peak` (two-peak urban day, max 2:1 slowdown), `mild`
+(small-city, e.g. DeKalb, slowest factor 0.80), `flat` (all factors 1.0, the
+static control). Speed factors are defined as resolution-independent
+day-fraction segments and discretized at period midpoints, so any P works.
+
+Two ways to generate the matrices:
+- **At build time:** `--time-periods P --td-profile {two_peak,mild,flat}` writes
+  `truck_time_matrix_p0.csv` … `truck_time_matrix_p{P-1}.csv` into the new
+  instance directory.
+- **Retrofitting an existing instance:**
+  `scripts/add_td_matrices.py --instance-dir DIR --profile {two_peak,mild,flat} --periods P`
+  writes `truck_time_matrix_{profile}_p{p}.csv` (profile in the filename so
+  several profiles can coexist) and merges provenance under `td_profiles` in
+  `parameters.json`.
+
+The four small DeKalb instances (`realworld_dekalb_il_300_slice6`,
+`realworld_dekalb_il_300_slice8`, `realworld_dekalb_il_10`,
+`realworld_dekalb_il_25`) already ship 8-period × 3-profile TD matrix sets. The
+mathematics is documented in `pdf/model_formulation.tex`, Section "Time-Dependent
+Travel Times".
+
 ## Benchmark Data Attribution
 
 The raw benchmark instances in `data_raw/tdrp_tw` come from the TDRP-TW dataset:

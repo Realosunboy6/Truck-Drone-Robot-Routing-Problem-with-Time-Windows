@@ -95,6 +95,8 @@ $e_i,\, \bar{e}_i$ & Time-window open/close time of customer $i$ (\texttt{open\_
 $\theta_i$ & Service time of customer $i$ (\texttt{service\_time}). \\
 $\mathrm{dist}_{ij}$ & Truck/drone travel distance, $i,j\in V$ (\texttt{distance\_matrix}). \\
 $\mathrm{tt}_{ij}$ & Truck travel time, $i,j\in V$ (\texttt{truck\_time\_matrix}). \\
+$\mathrm{tt}^p_{ij}$ & Truck travel time departing $i$ at the start of period $p$,
+$i,j\in V$ (\texttt{truck\_time\_matrix\_\{profile\}\_p\{p\}.csv}; Section~\ref{sec:td}). \\
 $\mathrm{dt}_{ij}$ & Drone travel time, $i,j\in V$ (\texttt{drone\_time\_matrix}). \\
 $\mathrm{rdist}_{ij}$ & Robot travel distance, $i,j\in V$ (\texttt{robot\_distance\_matrix}). \\
 $\mathrm{rt}_{ij}$ & Robot travel time, $i,j\in V$ (\texttt{robot\_time\_matrix}). \\
@@ -477,10 +479,66 @@ already caps usable drones at $\mu^{trk}_d\cdot|T|$ per type, and
 sortie serves at least one customer, each customer served once), so any platform
 beyond $|D|$ (or $|R|$) is provably unused in every feasible solution.
 
+\section{Time-Dependent Travel Times}
+\label{sec:td}
+
+The original PDF formulation assumes time-dependent travel times $t_{ij}(\tau)$.
+The MILP above is static: every timing constraint uses the free-flow matrix
+$\mathrm{tt}_{ij}$. The codebase now ships a time-dependent truck layer for
+a~posteriori evaluation of solutions under $t_{ij}(\tau)$ and for time-dependent
+heuristic route evaluation (\texttt{scripts/time\_dependent.py},
+\texttt{scripts/add\_td\_matrices.py}).
+
+\paragraph{Method.} The working day $[0,H]$ is split into $P$ equal periods.
+Each period $p$ carries a speed factor $f_p\in(0,1]$ relative to free-flow speed.
+The travel time for a departure at the start of period $p$ is computed by
+\emph{integrating speeds} --- the classical construction of Ichoua, Gendreau \&
+Semet (EJOR 144(3), 2003): find the smallest $T$ with
+$\int_{\tau_0}^{\tau_0+T} f(\tau)\,d\tau = \mathrm{tt}_{ij}$, where $\tau_0$ is
+the departure time and $f(\cdot)$ is the stepwise speed profile (repeated
+cyclically past the horizon). Because speeds, not travel times, are the
+primitive, the FIFO property holds by construction: departing later can never
+arrive earlier. The generator asserts \texttt{verify\_fifo} on every build.
+
+\paragraph{Profiles.} Speed factors are defined as resolution-independent
+piecewise segments over day fractions and discretized at period midpoints, so
+any $P$ can be used:
+\begin{itemize}
+\item \texttt{two\_peak}: two-peak urban day, maximum slowdown $2{:}1$, within
+Figliozzi's (TRE 48(3), 2012) $2.5{:}1$ empirical bound;
+\item \texttt{mild}: small-city congestion (e.g.\ DeKalb, IL), slowest factor $0.80$;
+\item \texttt{flat}: all factors $1.0$, the static control.
+\end{itemize}
+
+\paragraph{Scope and files.} Only the truck layer is time-dependent. Robot
+(pedestrian) congestion data does not exist publicly and drone airspace is
+uncongested, so $\mathrm{dt}_{ij}$ and $\mathrm{rt}_{ij}$ stay static; this is
+recorded in the instance provenance. For each profile the generator writes
+\texttt{truck\_time\_matrix\_\{profile\}\_p\{p\}.csv}, $p=0,\dots,P-1$, with entry
+$[p][i,j]=\mathrm{tt}^p_{ij}$ in hours, and merges provenance (period bounds,
+speed factors, citations, \texttt{td\_fifo\_verified}) into
+\texttt{parameters.json}. Flags: \texttt{--time-periods} $P$,
+\texttt{--td-profile}; existing instances are retrofitted with
+\texttt{scripts/add\_td\_matrices.py}.
+
+\paragraph{Status in this model.} The MILP of
+Sections~\ref{sec:sets}--\ref{sec:trimming} optimizes the static problem. The TD
+matrices are not decision-model inputs; they evaluate fixed routes under
+$t_{ij}(\tau)$ (e.g.\ re-timing a proven-optimal static route through peak
+periods) and will drive time-dependent heuristic search, with the exact static
+optimum as the baseline for optimality-gap measurement. Optimizing directly
+under time dependence would require a period-expanded MILP and is deliberately
+out of scope.
+
 \section{Deviations from the Original PDF Formulation}
 \label{sec:deviations}
 
 \begin{itemize}
+\item \textbf{Static optimization with time-dependent evaluation.} The PDF
+assumes $t_{ij}(\tau)$ throughout; this MILP optimizes static
+$\mathrm{tt}_{ij}$, while Section~\ref{sec:td} provides FIFO-safe
+time-dependent matrices for evaluating solutions and heuristics under
+$t_{ij}(\tau)$.
 \item \textbf{Endurance and capacity are hard constraints.} The PDF's Eq.~12
 penalizes endurance/capacity violations with $\lambda^d_E, \lambda^r_E, \lambda_Q$
 to allow \emph{heuristic exploration of infeasible solutions}. This MILP instead

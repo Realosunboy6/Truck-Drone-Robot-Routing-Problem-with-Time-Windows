@@ -52,5 +52,142 @@
     "Routing data comes from public demo servers (OSRM, Valhalla); for publication-grade instances use a self-hosted engine or a local OSM extract."
   ],
   "NUM_NODES": 27,
-  "NUM_ARCS": 651
+  "NUM_ARCS": 651,
+  "td_profiles": {
+    "two_peak": {
+      "td_profile": "two_peak",
+      "td_periods": 8,
+      "td_horizon": 8.0,
+      "td_period_bounds": [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0
+      ],
+      "td_speed_factors": [
+        1.0,
+        0.62,
+        0.92,
+        0.92,
+        1.0,
+        0.5,
+        0.95,
+        0.95
+      ],
+      "td_max_slowdown_ratio": 2.0,
+      "td_method": "Ichoua-Gendreau-Semet (2003) speed-profile integration; FIFO holds by construction (speeds are the primitive).",
+      "td_citations": [
+        "Ichoua, Gendreau & Semet (2003), EJOR 144(3)",
+        "Figliozzi (2012), TRE 48(3) (2.5:1 max ratio bound)",
+        "Balseiro, Loiseau & Ramonet (2011), C&OR 38(6)"
+      ],
+      "td_scope": "truck layer only; robot (pedestrian) and drone layers static (no public pedestrian-congestion data; airspace uncongested).",
+      "td_fifo_verified": true,
+      "td_matrix_files": [
+        "truck_time_matrix_two_peak_p0.csv",
+        "truck_time_matrix_two_peak_p1.csv",
+        "truck_time_matrix_two_peak_p2.csv",
+        "truck_time_matrix_two_peak_p3.csv",
+        "truck_time_matrix_two_peak_p4.csv",
+        "truck_time_matrix_two_peak_p5.csv",
+        "truck_time_matrix_two_peak_p6.csv",
+        "truck_time_matrix_two_peak_p7.csv"
+      ]
+    },
+    "mild": {
+      "td_profile": "mild",
+      "td_periods": 8,
+      "td_horizon": 8.0,
+      "td_period_bounds": [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0
+      ],
+      "td_speed_factors": [
+        1.0,
+        0.85,
+        1.0,
+        1.0,
+        0.8,
+        0.8,
+        1.0,
+        1.0
+      ],
+      "td_max_slowdown_ratio": 1.25,
+      "td_method": "Ichoua-Gendreau-Semet (2003) speed-profile integration; FIFO holds by construction (speeds are the primitive).",
+      "td_citations": [
+        "Ichoua, Gendreau & Semet (2003), EJOR 144(3)",
+        "Figliozzi (2012), TRE 48(3) (2.5:1 max ratio bound)",
+        "Balseiro, Loiseau & Ramonet (2011), C&OR 38(6)"
+      ],
+      "td_scope": "truck layer only; robot (pedestrian) and drone layers static (no public pedestrian-congestion data; airspace uncongested).",
+      "td_fifo_verified": true,
+      "td_matrix_files": [
+        "truck_time_matrix_mild_p0.csv",
+        "truck_time_matrix_mild_p1.csv",
+        "truck_time_matrix_mild_p2.csv",
+        "truck_time_matrix_mild_p3.csv",
+        "truck_time_matrix_mild_p4.csv",
+        "truck_time_matrix_mild_p5.csv",
+        "truck_time_matrix_mild_p6.csv",
+        "truck_time_matrix_mild_p7.csv"
+      ]
+    },
+    "flat": {
+      "td_profile": "flat",
+      "td_periods": 8,
+      "td_horizon": 8.0,
+      "td_period_bounds": [
+        0.0,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        7.0,
+        8.0
+      ],
+      "td_speed_factors": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "td_max_slowdown_ratio": 1.0,
+      "td_method": "Ichoua-Gendreau-Semet (2003) speed-profile integration; FIFO holds by construction (speeds are the primitive).",
+      "td_citations": [
+        "Ichoua, Gendreau & Semet (2003), EJOR 144(3)",
+        "Figliozzi (2012), TRE 48(3) (2.5:1 max ratio bound)",
+        "Balseiro, Loiseau & Ramonet (2011), C&OR 38(6)"
+      ],
+      "td_scope": "truck layer only; robot (pedestrian) and drone layers static (no public pedestrian-congestion data; airspace uncongested).",
+      "td_fifo_verified": true,
+      "td_matrix_files": [
+        "truck_time_matrix_flat_p0.csv",
+        "truck_time_matrix_flat_p1.csv",
+        "truck_time_matrix_flat_p2.csv",
+        "truck_time_matrix_flat_p3.csv",
+        "truck_time_matrix_flat_p4.csv",
+        "truck_time_matrix_flat_p5.csv",
+        "truck_time_matrix_flat_p6.csv",
+        "truck_time_matrix_flat_p7.csv"
+      ]
+    }
+  }
 }
